@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: assistant
+      POSTGRES_USER: assistant
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    volumes:
+      - assistant_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - assistant_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  opa:
+    image: openpolicyagent/opa:1.11.0-static
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+    volumes:
+      - ./security/opa:/policies:ro
+    ports:
+      - "127.0.0.1:8181:8181"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    environment:
+      ASSISTANT_DATABASE_URL: postgresql+psycopg://assistant:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/assistant
+      ASSISTANT_OLLAMA_URL: http://host.docker.internal:11434
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-qwen3.5:4b}
+      ASSISTANT_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
+      ASSISTANT_WORKSPACE_DIR: /data/workspace
+      ASSISTANT_SECURITY_DIR: /data/security
+      ASSISTANT_AUTH_REQUIRED: "true"
+      ASSISTANT_OPA_URL: http://opa:8181
+      ASSISTANT_OPA_REQUIRED: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./assistant_workspace:/data/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opa:
+        condition: service_started
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  assistant_postgres:
+  assistant_redis:

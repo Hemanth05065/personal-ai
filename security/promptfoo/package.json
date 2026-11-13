@@ -1,0 +1,16 @@
+{
+  "name": "assistant-security-evals",
+  "private": true,
+  "scripts": {
+    "redteam": "promptfoo redteam run -c promptfooconfig.yaml",
+    "report": "promptfoo redteam report"
+  },
+  "devDependencies": {
+    "promptfoo": "0.125.1"
+  },
+  "overrides": {
+    "basic-ftp": "6.2.6",
+    "glob": "14.0.4",
+    "minimatch": "11.0.5"
+  }
+}

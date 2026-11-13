@@ -1,0 +1,10 @@
+.git
+.env
+.venv
+assistant.db
+assistant_workspace
+apps/web/node_modules
+apps/web/dist
+__pycache__
+.pytest-tmp
+.pytest_cache
