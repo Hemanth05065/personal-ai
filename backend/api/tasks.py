@@ -9,9 +9,9 @@ from backend.core.policy import RiskLevel, evaluate_action
 from backend.database import get_db
 from backend.models.entities import Approval, ApprovalContext, AuditLog, Task, ToolCall
 from backend.models.schemas import ApprovalDetail, TaskCreate, TaskRead, ToolCallRead
-from backend.security.approval import grant_approval
+from backend.security.approval import expire_stale_approvals, grant_approval
 from backend.security.audit import append_security_event
-from backend.security.dependencies import PrincipalDependency
+from backend.security.dependencies import OperatorDependency, PrincipalDependency
 from backend.security.emergency import emergency_active
 from backend.services.execution import execute_tool_call
 from backend.services.tools import SUPPORTED_TOOLS, TOOL_RISKS
@@ -98,6 +98,7 @@ def create_task(payload: TaskCreate, principal: PrincipalDependency, db: Databas
 
 @router.get("/approvals", response_model=list[ApprovalDetail])
 def list_approvals(db: Database) -> list[ApprovalDetail]:
+    expire_stale_approvals(db)
     items = db.scalars(select(Approval).order_by(Approval.created_at.desc())).all()
     result = []
     for approval in items:
@@ -136,17 +137,34 @@ def task_receipts(task_id: str, db: Database) -> list[ToolCall]:
 
 @router.post("/approvals/{approval_id}/{decision}", response_model=ApprovalDetail)
 def decide_approval(
-    approval_id: str, decision: str, principal: PrincipalDependency, db: Database
+    approval_id: str, decision: str, principal: OperatorDependency, db: Database
 ):
     if decision not in {"approved", "denied"}:
         raise HTTPException(status_code=400, detail="Decision must be approved or denied")
+    expire_stale_approvals(db)
     approval = db.get(Approval, approval_id)
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval not found")
+    if approval.status == "expired":
+        raise HTTPException(status_code=409, detail="This approval request has expired")
     if approval.status != "pending":
         raise HTTPException(status_code=409, detail="Approval has already been decided")
-    approval.status = decision
     task = db.get(Task, approval.task_id)
+    if decision == "approved":
+        # Approving runs the action, so the approver's own role must allow its risk.
+        allowed = evaluate_action(
+            approval.action,
+            RiskLevel(task.risk_level if task else RiskLevel.SENSITIVE),
+            principal.role,
+            emergency_active(db),
+        )
+        if not allowed.allowed:
+            append_security_event(
+                db, "approval.decide", "denied", f"approval={approval.id}; {allowed.reason}", principal.user_id
+            )
+            db.commit()
+            raise HTTPException(status_code=403, detail=allowed.reason)
+    approval.status = decision
     if task:
         task.status = "planned" if decision == "approved" else "cancelled"
     call = db.scalar(select(ToolCall).where(ToolCall.task_id == approval.task_id))

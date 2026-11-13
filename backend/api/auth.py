@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from backend.core.config import get_settings
 from backend.database import get_db
 from backend.models.entities import User, now_utc
+from backend.security.audit import append_security_event
 from backend.security.auth import (
     DEVICE_COOKIE,
     SESSION_COOKIE,
@@ -18,6 +19,7 @@ from backend.security.auth import (
 )
 from backend.security.dependencies import PrincipalDependency
 from backend.security.schemas import AuthResponse, BootstrapRequest, LoginRequest, UserRead
+from backend.security.throttle import address_throttle, login_throttle
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 Database = Annotated[Session, Depends(get_db)]
@@ -64,9 +66,23 @@ def bootstrap(payload: BootstrapRequest, request: Request, response: Response, d
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, request: Request, response: Response, db: Database):
+    user_key = f"user:{payload.username.lower()}"
+    address_key = f"address:{request.client.host if request.client else 'unknown'}"
+    wait = max(login_throttle.retry_after(user_key), address_throttle.retry_after(address_key))
+    if wait:
+        append_security_event(db, "auth.login", "throttled", f"username={payload.username.lower()}")
+        db.commit()
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many failed sign-ins. Try again in {max(1, wait // 60)} minute(s).",
+            headers={"Retry-After": str(wait)},
+        )
     user = verify_login(db, payload.username, payload.password)
     if user is None:
+        login_throttle.record_failure(user_key)
+        address_throttle.record_failure(address_key)
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    login_throttle.record_success(user_key)
     tokens = create_login(
         db, user, payload.device_name, request.cookies.get(DEVICE_COOKIE)
     )

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     opa_url: str = "http://127.0.0.1:8181"
     opa_required: bool = False
     openshell_enabled: bool = False
+    # Approvals nobody decides on expire, so an old request can't be approved by surprise later.
+    approval_pending_hours: int = 24
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="ASSISTANT_", extra="ignore"

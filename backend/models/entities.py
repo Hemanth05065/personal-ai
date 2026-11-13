@@ -107,6 +107,10 @@ class Automation(Base):
     next_run: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    # Who created the rule. Runs use this user's *current* role, never a fixed admin.
+    owner_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Role recorded at creation; only used for service principals that have no user row.
+    owner_role: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
 
 class User(Base):

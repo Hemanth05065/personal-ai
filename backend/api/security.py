@@ -14,6 +14,7 @@ from backend.models.entities import (
     SecurityFinding,
     now_utc,
 )
+from backend.security.approval import expire_stale_approvals
 from backend.security.audit import append_security_event, verify_audit_chain
 from backend.security.content import record_scan
 from backend.security.dependencies import AdminDependency, PrincipalDependency
@@ -42,6 +43,7 @@ Database = Annotated[Session, Depends(get_db)]
 
 @router.get("/status", response_model=SecurityStatus)
 def security_status(_: PrincipalDependency, db: Database) -> SecurityStatus:
+    expire_stale_approvals(db)
     state = get_security_state(db)
     sandbox = sandbox_status()
     settings = get_settings()

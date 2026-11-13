@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -18,7 +19,7 @@ from backend.api import (
     tasks,
 )
 from backend.core.config import get_settings
-from backend.database import SessionLocal, init_db
+from backend.database import DatabaseBusy, SessionLocal, init_db
 from backend.security.auth import DEVICE_COOKIE, SESSION_COOKIE, Principal, authenticate_session
 from backend.services.automation import automation_loop
 
@@ -59,7 +60,13 @@ async def authenticate_request(request: Request, call_next):
         return await call_next(request)
 
     supplied_key = request.headers.get("X-Assistant-Key")
-    if settings.api_key and supplied_key == settings.api_key:
+    # compare_digest takes the same time wherever the strings differ, so response
+    # timing can't be used to guess the key one character at a time.
+    if (
+        settings.api_key
+        and supplied_key
+        and hmac.compare_digest(supplied_key.encode(), settings.api_key.encode())
+    ):
         request.state.principal = Principal("service", "api-key", "admin", service=True)
         return await call_next(request)
 
@@ -89,6 +96,11 @@ async def authenticate_request(request: Request, call_next):
         return await call_next(request)
     finally:
         db.close()
+
+
+@app.exception_handler(DatabaseBusy)
+async def database_busy(_: Request, exc: DatabaseBusy) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 app.include_router(health.router, prefix="/api/v1")

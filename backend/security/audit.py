@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.core.config import get_settings
+from backend.database import hold_write_lock
 from backend.models.entities import SecureAuditRecord, now_utc
 
 REDACTIONS = [
@@ -82,6 +83,9 @@ def append_security_event(
     detail: str = "",
     actor_id: str | None = None,
 ) -> SecureAuditRecord:
+    # Lock before reading the last record so no other transaction can append
+    # between this read and this session's commit (see backend.database).
+    hold_write_lock(db)
     last = db.scalar(select(SecureAuditRecord).order_by(SecureAuditRecord.sequence.desc()).limit(1))
     sequence = (last.sequence + 1) if last else 1
     previous = last.entry_hash if last else "0" * 64

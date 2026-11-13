@@ -13,6 +13,8 @@ from backend.models.schemas import (
     ConversationDetail,
     ConversationRead,
 )
+from backend.security.content import record_scan
+from backend.security.dependencies import OperatorDependency
 from backend.services.ollama import OllamaClient, OllamaUnavailable
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -34,7 +36,7 @@ def get_conversation(conversation_id: str, db: Database) -> Conversation:
 
 
 @router.delete("/conversations/{conversation_id}", status_code=204)
-def delete_conversation(conversation_id: str, db: Database) -> Response:
+def delete_conversation(conversation_id: str, _: OperatorDependency, db: Database) -> Response:
     conversation = db.get(Conversation, conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -49,6 +51,8 @@ def delete_conversation(conversation_id: str, db: Database) -> Response:
 @router.post("", response_model=ChatResponse)
 async def chat(payload: ChatRequest, db: Database) -> ChatResponse:
     settings = get_settings()
+    # The owner's own message is recorded as a finding but not blocked.
+    record_scan(db, payload.message, "chat")
     conversation = db.get(Conversation, payload.conversation_id) if payload.conversation_id else None
     if payload.conversation_id and conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
