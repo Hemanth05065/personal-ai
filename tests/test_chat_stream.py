@@ -10,7 +10,10 @@ from backend.api.chat import chat_stream
 from backend.core.config import get_settings
 from backend.database import SessionLocal
 from backend.models.schemas import ChatRequest
+from backend.security.auth import Principal
 from backend.services.ollama import OllamaClient, OllamaUnavailable
+
+LOCAL_ADMIN = Principal("local-development", "local", "admin", service=True)
 
 
 def _events(body: str) -> list[dict]:
@@ -18,7 +21,7 @@ def _events(body: str) -> list[dict]:
 
 
 def _fake_stream(chunks, fail_after=None):
-    async def stream_chat(self, messages, memories):
+    async def stream_chat(self, messages, memories, tools=None, system_extra=""):
         for index, chunk in enumerate(chunks):
             if fail_after is not None and index == fail_after:
                 raise OllamaUnavailable("model crashed")
@@ -76,7 +79,7 @@ def test_stopping_early_saves_what_arrived(client, monkeypatch):
 
     async def read_two_pieces_then_stop() -> str:
         with SessionLocal() as db:
-            response = await chat_stream(ChatRequest(message="Hi"), db)
+            response = await chat_stream(ChatRequest(message="Hi"), LOCAL_ADMIN, db)
         iterator = response.body_iterator
         start = json.loads(await iterator.__anext__())
         await iterator.__anext__()  # "Kept "
@@ -119,3 +122,19 @@ def test_ollama_stream_raises_on_error_line_or_http_error():
         asyncio.run(_collect(_client_with([json.dumps({"error": "model not found"})])))
     with pytest.raises(OllamaUnavailable):
         asyncio.run(_collect(_client_with(["{}"], status=500)))
+
+
+def test_ollama_stream_turns_tool_calls_into_requests():
+    from backend.services.ollama import ToolRequest
+
+    lines = [
+        json.dumps({"message": {"content": "", "tool_calls": [
+            {"function": {"name": "write_file", "arguments": {"path": "a.txt", "content": "x"}}},
+            {"function": {"name": "read_file", "arguments": "{\"path\": \"b.txt\"}"}},
+        ]}, "done": False}),
+        json.dumps({"message": {"content": ""}, "done": True}),
+    ]
+    assert asyncio.run(_collect(_client_with(lines))) == [
+        ToolRequest("write_file", {"path": "a.txt", "content": "x"}),
+        ToolRequest("read_file", {"path": "b.txt"}),
+    ]

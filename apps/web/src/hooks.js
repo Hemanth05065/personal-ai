@@ -100,28 +100,32 @@ export function useChat(notify, enabled) {
       const next = change(last);
       return next ? [...items.slice(0, -1), next] : items.slice(0, -1);
     });
+    // A finished reply keeps its text and any tool cards; an empty one is dropped.
+    const settle = (reply, extra = {}) => (reply.content || reply.tools.length
+      ? { role: "assistant", content: reply.content, tools: reply.tools, ...extra }
+      : null);
     setMessages((items) => [...items, { role: "user", content: text }]);
     setBusy(true);
     try {
       const result = await streamEvents("/chat/stream", { message: text, conversation_id: conversationId }, (event) => {
         if (event.type === "start") {
           setConversationId(event.conversation_id);
-          setMessages((items) => [...items, { role: "assistant", content: "", streaming: true }]);
+          setMessages((items) => [...items, { role: "assistant", content: "", tools: [], streaming: true }]);
         } else if (event.type === "delta") {
           updateReply((reply) => ({ ...reply, content: reply.content + event.text }));
+        } else if (event.type === "tool") {
+          updateReply((reply) => ({ ...reply, tools: [...reply.tools, event.tool] }));
         } else if (event.type === "done") {
-          updateReply((reply) => ({ role: "assistant", id: event.message_id, content: reply.content }));
+          updateReply((reply) => settle(reply, { id: event.message_id }));
         } else if (event.type === "error") {
-          updateReply((reply) => (reply.content ? { role: "assistant", content: reply.content } : null));
+          updateReply((reply) => settle(reply));
           setMessages((items) => [...items, { role: "error", content: event.detail }]);
         }
       }, controller.signal);
-      if (result.aborted) {
-        updateReply((reply) => (reply.content ? { role: "assistant", content: reply.content, stopped: true } : null));
-      }
+      if (result.aborted) updateReply((reply) => settle(reply, { stopped: true }));
       await refreshConversations();
     } catch (error) {
-      updateReply((reply) => (reply.content ? { role: "assistant", content: reply.content } : null));
+      updateReply((reply) => settle(reply));
       setMessages((items) => [...items, { role: "error", content: error.message }]);
     } finally {
       if (abortRef.current === controller) abortRef.current = null;

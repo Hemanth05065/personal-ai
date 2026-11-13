@@ -14,7 +14,7 @@ from backend.security.audit import append_security_event
 from backend.security.dependencies import OperatorDependency, PrincipalDependency
 from backend.security.emergency import emergency_active
 from backend.services.execution import execute_tool_call
-from backend.services.tools import SUPPORTED_TOOLS, TOOL_RISKS
+from backend.services.planning import PlanRejected, plan_task
 
 router = APIRouter(tags=["tasks"])
 Database = Annotated[Session, Depends(get_db)]
@@ -27,73 +27,19 @@ def list_tasks(db: Database) -> list[Task]:
 
 @router.post("/tasks", response_model=TaskRead, status_code=201)
 def create_task(payload: TaskCreate, principal: PrincipalDependency, db: Database) -> Task:
-    requested_risk = RiskLevel(payload.risk_level)
-    decision = evaluate_action(
-        payload.action, requested_risk, principal.role, emergency_active(db)
-    )
-    if not decision.allowed:
-        raise HTTPException(status_code=403, detail=decision.reason)
-    if payload.action not in SUPPORTED_TOOLS:
-        raise HTTPException(status_code=422, detail="This tool is not available in the local MVP.")
-    effective_risk = RiskLevel(max(payload.risk_level, TOOL_RISKS[payload.action]))
-    decision = evaluate_action(
-        payload.action, effective_risk, principal.role, emergency_active(db)
-    )
-    if not decision.allowed:
-        append_security_event(
-            db, "permission.task", "denied", decision.reason, principal.user_id
+    try:
+        planned = plan_task(
+            db,
+            principal,
+            title=payload.title,
+            description=payload.description,
+            action=payload.action,
+            arguments=payload.arguments,
+            requested_risk=payload.risk_level,
         )
-        db.commit()
-        raise HTTPException(status_code=403, detail=decision.reason)
-    status = "awaiting_approval" if decision.approval_required else "planned"
-    task = Task(
-        title=payload.title,
-        description=payload.description,
-        risk_level=int(effective_risk),
-        status=status,
-    )
-    db.add(task)
-    db.flush()
-    call = ToolCall(
-        task_id=task.id,
-        tool_name=payload.action,
-        arguments=json.dumps(payload.arguments),
-        status="awaiting_approval" if decision.approval_required else "pending",
-    )
-    db.add(call)
-    db.flush()
-    if decision.approval_required:
-        approval = Approval(task_id=task.id, action=payload.action, reason=decision.reason)
-        db.add(approval)
-        db.flush()
-        targets = [str(payload.arguments.get("path", "workspace"))]
-        db.add(
-            ApprovalContext(
-                approval_id=approval.id,
-                description=payload.description or payload.title,
-                justification=decision.reason,
-                targets=json.dumps(targets),
-                consequences=(
-                    "This action can change data in the authorized workspace. "
-                    "Approval is bound to the exact tool name and arguments and expires in 10 minutes."
-                ),
-                requested_by=principal.user_id,
-            )
-        )
-    db.add(AuditLog(action="task.create", outcome=status, detail=payload.action))
-    append_security_event(
-        db,
-        "permission.task",
-        "approval_required" if decision.approval_required else "allowed",
-        f"action={payload.action}; risk={int(effective_risk)}",
-        principal.user_id,
-    )
-    db.commit()
-    db.refresh(task)
-    if not decision.approval_required:
-        execute_tool_call(db, task, call)
-        db.refresh(task)
-    return task
+    except PlanRejected as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.reason) from exc
+    return planned.task
 
 
 @router.get("/approvals", response_model=list[ApprovalDetail])

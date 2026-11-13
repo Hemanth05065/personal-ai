@@ -96,7 +96,7 @@ export default function App() {
   const title = (NAV.find(([id]) => id === view) || NAV[0])[1];
   const shared = { notify, refreshSafety };
   const body = {
-    chat: <ChatView chat={chat} notify={notify} modelReady={modelReady} />,
+    chat: <ChatView chat={chat} notify={notify} modelReady={modelReady} refreshSafety={refreshSafety} />,
     research: <ResearchView {...shared} />,
     memory: <MemoryView {...shared} />,
     files: <FilesView {...shared} />,

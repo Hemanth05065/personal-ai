@@ -17,7 +17,8 @@ from backend.models.schemas import (
     ConversationRead,
 )
 from backend.security.content import record_scan
-from backend.security.dependencies import OperatorDependency
+from backend.security.dependencies import OperatorDependency, PrincipalDependency
+from backend.services.agent import run_agent
 from backend.services.ollama import OllamaClient, OllamaUnavailable
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -70,7 +71,8 @@ def _prepare(payload: ChatRequest, db: Session) -> tuple[str, list[dict[str, str
 
     history = db.scalars(
         select(Message)
-        .where(Message.conversation_id == conversation.id)
+        # tool_event rows are UI records of proposals, not part of the model's dialogue.
+        .where(Message.conversation_id == conversation.id, Message.role.in_(("user", "assistant")))
         .order_by(Message.created_at.desc())
         .limit(settings.max_context_messages)
     ).all()
@@ -97,21 +99,24 @@ def _event(data: dict) -> str:
     return json.dumps(data) + "\n"
 
 
-def _save_assistant_message(conversation_id: str, content: str) -> str:
+def _save_message(conversation_id: str, role: str, content: str) -> str:
     # Own session: the request's session may already be closed while the body streams.
     with SessionLocal() as db:
-        message = Message(conversation_id=conversation_id, role="assistant", content=content)
+        message = Message(conversation_id=conversation_id, role=role, content=content)
         db.add(message)
         db.commit()
         return message.id
 
 
 @router.post("/stream")
-async def chat_stream(payload: ChatRequest, db: Database) -> StreamingResponse:
+async def chat_stream(
+    payload: ChatRequest, principal: PrincipalDependency, db: Database
+) -> StreamingResponse:
     """Stream a reply as newline-delimited JSON events.
 
     {"type": "start", "conversation_id", "model"}  once, first
     {"type": "delta", "text"}                       for each piece of the reply
+    {"type": "tool", "tool": {...}}                 when the model asked for a tool (see agent.py)
     {"type": "done", "message_id"}                  when the reply is complete
     {"type": "error", "detail"}                     if the model fails mid-way
 
@@ -127,16 +132,19 @@ async def chat_stream(payload: ChatRequest, db: Database) -> StreamingResponse:
         completed = False
         yield _event({"type": "start", "conversation_id": conversation_id, "model": settings.model})
         try:
-            async for text in OllamaClient(settings).stream_chat(messages, memories):
-                parts.append(text)
-                yield _event({"type": "delta", "text": text})
+            async for event in run_agent(OllamaClient(settings), principal, messages, memories):
+                if event["type"] == "delta":
+                    parts.append(event["text"])
+                else:
+                    _save_message(conversation_id, "tool_event", json.dumps(event["tool"]))
+                yield _event(event)
             completed = True
         except OllamaUnavailable as exc:
             error = str(exc)
         finally:
             # Runs on normal end, on error, and when the client disconnects (Stop).
             if parts:
-                message_id = _save_assistant_message(conversation_id, "".join(parts))
+                message_id = _save_message(conversation_id, "assistant", "".join(parts))
         if error:
             yield _event({"type": "error", "detail": error})
         elif completed:

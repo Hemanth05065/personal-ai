@@ -1,13 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
+import { request } from "../api.js";
 import Markdown from "../components/Markdown.jsx";
+import ToolCard from "../components/ToolCard.jsx";
 
 const WHO = { user: "You", assistant: "Assistant", error: "Problem" };
+
+function parseTool(content) {
+  try { return JSON.parse(content); } catch { return null; }
+}
 
 function Thinking() {
   return <div className="skeleton" role="status" aria-label="The assistant is thinking"><span /><span /></div>;
 }
 
-export default function ChatView({ chat, notify, modelReady }) {
+export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
   const { messages, busy, send } = chat;
   const [input, setInput] = useState("");
   const [listening, setListening] = useState(false);
@@ -22,12 +28,31 @@ export default function ChatView({ chat, notify, modelReady }) {
     endRef.current?.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "end" });
   }, [messages, busy]);
 
-  function submit(event) {
+  // Current approval status for every proposal on screen, so reopened chats aren't stale.
+  const approvalIds = messages.flatMap((message) => (message.role === "tool_event"
+    ? [parseTool(message.content)?.approval_id]
+    : (message.tools || []).map((tool) => tool.approval_id))).filter(Boolean);
+  const approvalKey = approvalIds.join(",");
+  const [approvalStatus, setApprovalStatus] = useState({});
+  useEffect(() => {
+    if (!approvalKey || busy) return;
+    let live = true;
+    request("/approvals")
+      .then((items) => { if (live) setApprovalStatus(Object.fromEntries(items.map((item) => [item.id, item.status]))); })
+      .catch(() => { /* cards fall back to the status saved with them */ });
+    return () => { live = false; };
+  }, [approvalKey, busy]);
+
+  const card = (tool) => <ToolCard key={tool.id} tool={tool} approvalStatus={approvalStatus[tool.approval_id]}
+    notify={notify} onDecided={refreshSafety} />;
+
+  async function submit(event) {
     event.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
-    send(text);
+    await send(text);
+    refreshSafety(); // a proposal changes the approvals count in the top bar
   }
 
   function dictate() {
@@ -58,14 +83,29 @@ export default function ChatView({ chat, notify, modelReady }) {
           <p className="muted">Everything you type stays on this computer.</p>
           {modelReady === false && <p className="field-error" role="alert">Ollama isn’t running, so replies will fail. Start Ollama, then send your message.</p>}
         </div>}
-        {messages.map((message, index) => <article className={`msg msg-${message.role}`} key={message.id || index}>
-          <p className="msg-who">{WHO[message.role] || message.role}</p>
-          {message.role === "assistant"
-            ? (message.streaming && !message.content ? <Thinking /> : <Markdown text={message.content} />)
-            : <p className="msg-text">{message.content}</p>}
-          {message.stopped && <p className="muted">Stopped. The text above was kept.</p>}
-          {message.role === "assistant" && !message.streaming && <button type="button" className="btn btn-quiet btn-sm" onClick={() => speak(message.content)}>Read aloud</button>}
-        </article>)}
+        {messages.map((message, index) => {
+          const key = message.id || index;
+          if (message.role === "tool_event") {
+            // A saved proposal from an earlier turn.
+            const tool = parseTool(message.content);
+            return tool && <article className="msg msg-assistant" key={key}>
+              <p className="msg-who">Assistant action</p>
+              {card(tool)}
+            </article>;
+          }
+          const tools = message.tools || [];
+          return <article className={`msg msg-${message.role}`} key={key}>
+            <p className="msg-who">{WHO[message.role] || message.role}</p>
+            {tools.map(card)}
+            {message.role === "assistant"
+              ? (message.streaming && !message.content
+                ? (tools.length ? null : <Thinking />)
+                : message.content && <Markdown text={message.content} />)
+              : <p className="msg-text">{message.content}</p>}
+            {message.stopped && <p className="muted">Stopped. The text above was kept.</p>}
+            {message.role === "assistant" && !message.streaming && message.content && <button type="button" className="btn btn-quiet btn-sm" onClick={() => speak(message.content)}>Read aloud</button>}
+          </article>;
+        })}
         {busy && !waitingOnReply && <article className="msg msg-assistant">
           <p className="msg-who">Assistant</p>
           <Thinking />

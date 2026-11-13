@@ -278,6 +278,14 @@ td { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .composer-actions { display: flex; justify-content: flex-end; gap: var(--s2); width: 100%; }
 .composer-hint { width: 100%; }
 
+.tool-card { display: grid; gap: var(--s1); width: 100%; padding: var(--s3) var(--s4); border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--surface); }
+.tool-pending { border-color: var(--text); }
+.tool-stopped .tool-status { color: var(--danger); }
+.tool-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.tool-head code { padding: 0 var(--s1); border-radius: 4px; background: var(--surface-2); font: var(--t-sm) var(--font-mono); overflow-wrap: anywhere; }
+.tool-status { font-size: var(--t-sm); font-weight: 600; }
+.tool-card .row-actions { margin-top: var(--s1); }
+
 .prose { display: grid; gap: var(--s3); line-height: 1.65; overflow-wrap: anywhere; }
 .prose p { white-space: normal; }
 .prose-heading { font-weight: 650; }
