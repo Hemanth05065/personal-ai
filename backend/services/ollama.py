@@ -23,6 +23,9 @@ class OllamaClient:
         payload = {
             "model": self.settings.model,
             "stream": False,
+            # Thinking models (e.g. qwen3.5) otherwise put the whole answer in
+            # message.thinking and return an empty message.content.
+            "think": False,
             "messages": [
                 {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nRelevant memories:\n{memory_text}"},
                 *messages,
