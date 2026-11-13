@@ -20,28 +20,70 @@ function describeDetail(detail) {
   return JSON.stringify(detail);
 }
 
-export async function request(path, options = {}) {
-  const method = options.method || "GET";
-  const headers = {
+function headersFor(method, extra) {
+  return {
     "Content-Type": "application/json",
     ...(API_KEY ? { "X-Assistant-Key": API_KEY } : {}),
     ...(csrfToken && !["GET", "HEAD", "OPTIONS"].includes(method) ? { "X-CSRF-Token": csrfToken } : {}),
-    ...options.headers,
+    ...extra,
   };
-  let response;
+}
+
+async function send(path, options) {
+  const method = options.method || "GET";
   try {
-    response = await fetch(`${API}/api/v1${path}`, { ...options, method, headers, credentials: "include" });
-  } catch {
+    return await fetch(`${API}/api/v1${path}`, { ...options, method, headers: headersFor(method, options.headers), credentials: "include" });
+  } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new Error(`Can’t reach the local API at ${API}. Check that the backend is running.`);
   }
-  if (response.status === 204) return null;
+}
+
+async function failure(response) {
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(describeDetail(data.detail));
-    error.status = response.status;
+  const error = new Error(describeDetail(data.detail));
+  error.status = response.status;
+  return error;
+}
+
+export async function request(path, options = {}) {
+  const response = await send(path, options);
+  if (response.status === 204) return null;
+  if (!response.ok) throw await failure(response);
+  return response.json().catch(() => ({}));
+}
+
+/**
+ * POST and read a newline-delimited JSON stream, calling onEvent for each event.
+ * Pass an AbortSignal to stop early; the promise then resolves with { aborted: true }.
+ */
+export async function streamEvents(path, body, onEvent, signal) {
+  let response;
+  try {
+    response = await send(path, { method: "POST", body: JSON.stringify(body), signal });
+  } catch (error) {
+    if (error.name === "AbortError") return { aborted: true };
     throw error;
   }
-  return data;
+  if (!response.ok) throw await failure(response);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) if (line.trim()) onEvent(JSON.parse(line));
+    }
+    if (buffer.trim()) onEvent(JSON.parse(buffer));
+  } catch (error) {
+    if (error.name === "AbortError") return { aborted: true };
+    throw new Error("The reply stream was interrupted.");
+  }
+  return { aborted: false };
 }
 
 export const json = (body) => JSON.stringify(body);

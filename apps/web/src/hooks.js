@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { request, json } from "./api.js";
+import { request, streamEvents } from "./api.js";
 
 /** Load data once and on demand. status: loading | ready | error. Data is kept across reloads. */
 export function useLoad(loader, deps = []) {
@@ -59,6 +59,7 @@ export function useChat(notify, enabled) {
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
+  const abortRef = useRef(null);
 
   const refreshConversations = useCallback(async () => {
     try { setConversations(await request("/chat/conversations")); } catch { /* the health indicator reports connection problems */ }
@@ -66,9 +67,13 @@ export function useChat(notify, enabled) {
 
   useEffect(() => { if (enabled) refreshConversations(); }, [enabled, refreshConversations]);
 
-  const newChat = useCallback(() => { setConversationId(null); setMessages([]); }, []);
+  /** Stop the reply being streamed. The server keeps whatever text had arrived. */
+  const stop = useCallback(() => { abortRef.current?.abort(); }, []);
+
+  const newChat = useCallback(() => { stop(); setConversationId(null); setMessages([]); }, [stop]);
 
   const openConversation = useCallback(async (id) => {
+    stop();
     try {
       const conversation = await request(`/chat/conversations/${id}`);
       setConversationId(id);
@@ -86,17 +91,43 @@ export function useChat(notify, enabled) {
   }, [conversationId, newChat, notify, refreshConversations]);
 
   const send = useCallback(async (text) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    // Change only the reply this request is writing (the last message), never another thread's.
+    const updateReply = (change) => setMessages((items) => {
+      const last = items[items.length - 1];
+      if (!last || last.role !== "assistant" || !last.streaming) return items;
+      const next = change(last);
+      return next ? [...items.slice(0, -1), next] : items.slice(0, -1);
+    });
     setMessages((items) => [...items, { role: "user", content: text }]);
     setBusy(true);
     try {
-      const data = await request("/chat", { method: "POST", body: json({ message: text, conversation_id: conversationId }) });
-      setConversationId(data.conversation_id);
-      setMessages((items) => [...items, { role: "assistant", content: data.message }]);
+      const result = await streamEvents("/chat/stream", { message: text, conversation_id: conversationId }, (event) => {
+        if (event.type === "start") {
+          setConversationId(event.conversation_id);
+          setMessages((items) => [...items, { role: "assistant", content: "", streaming: true }]);
+        } else if (event.type === "delta") {
+          updateReply((reply) => ({ ...reply, content: reply.content + event.text }));
+        } else if (event.type === "done") {
+          updateReply((reply) => ({ role: "assistant", id: event.message_id, content: reply.content }));
+        } else if (event.type === "error") {
+          updateReply((reply) => (reply.content ? { role: "assistant", content: reply.content } : null));
+          setMessages((items) => [...items, { role: "error", content: event.detail }]);
+        }
+      }, controller.signal);
+      if (result.aborted) {
+        updateReply((reply) => (reply.content ? { role: "assistant", content: reply.content, stopped: true } : null));
+      }
       await refreshConversations();
     } catch (error) {
+      updateReply((reply) => (reply.content ? { role: "assistant", content: reply.content } : null));
       setMessages((items) => [...items, { role: "error", content: error.message }]);
-    } finally { setBusy(false); }
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      setBusy(false);
+    }
   }, [conversationId, refreshConversations]);
 
-  return { conversations, conversationId, messages, busy, newChat, openConversation, deleteConversation, send };
+  return { conversations, conversationId, messages, busy, newChat, openConversation, deleteConversation, send, stop };
 }
