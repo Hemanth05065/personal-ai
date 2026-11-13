@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
@@ -207,6 +207,46 @@ class SecurityFinding(Base):
     detail: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(30), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class Reminder(Base):
+    """A personal reminder. pending -> fired (due) -> dismissed; or pending -> cancelled."""
+
+    __tablename__ = "reminders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_id: Mapped[str] = mapped_column(String(36), index=True)
+    text: Mapped[str] = mapped_column(String(500))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class IndexedFile(Base):
+    """One workspace file in the search index, with what it looked like when indexed."""
+
+    __tablename__ = "indexed_files"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    path: Mapped[str] = mapped_column(String(1000), unique=True, index=True)
+    size: Mapped[int] = mapped_column(default=0)
+    modified_at: Mapped[float] = mapped_column(default=0.0)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(100))
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class DocumentChunk(Base):
+    """A piece of a workspace file and its embedding (unit-length float32 vector)."""
+
+    __tablename__ = "document_chunks"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    path: Mapped[str] = mapped_column(String(1000), index=True)
+    chunk_index: Mapped[int] = mapped_column(default=0)
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[bytes] = mapped_column(LargeBinary)
 
 
 class AuditLog(Base):

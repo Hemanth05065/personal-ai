@@ -13,6 +13,7 @@ Rules, in order of importance:
    before the model reads them.
 """
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -34,6 +35,14 @@ TOOL_SPECS: dict[str, tuple[str, dict[str, str], list[str]]] = {
         "Read a UTF-8 text file from the user's assistant workspace folder.",
         {"path": "Path relative to the workspace, e.g. notes/todo.txt"},
         ["path"],
+    ),
+    "search_files": (
+        (
+            "Search the contents of the user's workspace files by meaning. "
+            "Use it when the user asks about something in their notes without naming a file."
+        ),
+        {"query": "What to look for, in plain words"},
+        ["query"],
     ),
     "write_file": (
         (
@@ -109,6 +118,8 @@ def _describe(name: str, arguments: dict) -> str:
         return "List workspace files"
     if name == "read_file":
         return f"Read {path}"
+    if name == "search_files":
+        return f"Search files for “{arguments.get('query', '')[:80]}”"
     size = len(arguments.get("content", "").encode("utf-8"))
     return f"Write {size} bytes to {path}"
 
@@ -157,6 +168,21 @@ def handle_tool_request(principal: Principal, request: ToolRequest) -> ToolOutco
         if request.name == "list_files":
             paths = [item["path"] for item in (data or [])][:200]
             return ToolOutcome(card, model_result=json.dumps({"files": paths}))
+        if request.name == "search_files":
+            hits = data or []
+            # Ranked by closeness, not filtered: "results", never "matches".
+            card["summary"] = f"{card['summary']}: {len(hits)} result{'' if len(hits) == 1 else 's'}"
+            text = "\n\n".join(f"{hit['path']}:\n{hit['snippet']}" for hit in hits)
+            scan = record_scan(db, text, "file:search") if text else None
+            if scan and not scan.safe:
+                card["status"] = "flagged"
+                return ToolOutcome(card, final_text=(
+                    "I searched your files, but a matching passage looks like instructions aimed at "
+                    "the assistant, so I didn’t use the results. It’s listed under Security findings."
+                ))
+            return ToolOutcome(card, model_result=isolate_untrusted_content(
+                json.dumps({"matches": hits}, ensure_ascii=False), "workspace search"
+            ))
         # read_file: scan before the model sees it.
         content = (data or {}).get("content", "")
         scan = record_scan(db, content, f"file:{arguments['path']}")
@@ -199,7 +225,8 @@ async def run_agent(
 
         handled: list[tuple[ToolRequest, ToolOutcome]] = []
         for request in current.requests[:MAX_CALLS_PER_ROUND]:
-            outcome = handle_tool_request(principal, request)
+            # Tools do file IO and (for search) embedding calls; keep them off the event loop.
+            outcome = await asyncio.to_thread(handle_tool_request, principal, request)
             handled.append((request, outcome))
             yield {"type": "tool", "tool": outcome.card}
         endings = [outcome.final_text for _, outcome in handled if outcome.final_text]

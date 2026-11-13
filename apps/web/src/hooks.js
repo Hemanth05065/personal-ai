@@ -33,7 +33,7 @@ export function useMedia(query) {
   return matches;
 }
 
-const VIEW_IDS = ["chat", "research", "memory", "files", "tasks", "security"];
+const VIEW_IDS = ["chat", "research", "memory", "reminders", "files", "tasks", "security"];
 
 export function useRoute() {
   const read = () => {
@@ -134,4 +134,70 @@ export function useChat(notify, enabled) {
   }, [conversationId, refreshConversations]);
 
   return { conversations, conversationId, messages, busy, newChat, openConversation, deleteConversation, send, stop };
+}
+
+const SHOWN_KEY = "assistant_reminders_alerted";
+
+function readShown() {
+  try { return new Set(JSON.parse(localStorage.getItem(SHOWN_KEY) || "[]")); } catch { return new Set(); }
+}
+
+function saveShown(shown) {
+  try { localStorage.setItem(SHOWN_KEY, JSON.stringify([...shown].slice(-200))); } catch { /* storage unavailable: may alert twice */ }
+}
+
+/**
+ * Your reminders, polled every 30 s and whenever the tab becomes visible.
+ * A reminder that has gone off raises one system notification (if allowed);
+ * reminders that fired while the app was closed alert on the next open.
+ */
+export function useReminders(enabled, notify) {
+  const [items, setItems] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [error, setError] = useState("");
+  const shown = useRef(null);
+
+  const alertNew = useCallback((list) => {
+    if (!shown.current) shown.current = readShown();
+    const fresh = list.filter((item) => item.status === "fired" && !shown.current.has(item.id));
+    if (!fresh.length) return;
+    fresh.forEach((item) => shown.current.add(item.id));
+    saveShown(shown.current);
+    if ("Notification" in window && Notification.permission === "granted") {
+      fresh.forEach((item) => {
+        const note = new Notification("Reminder", { body: item.text, tag: item.id });
+        note.onclick = () => { window.focus(); window.location.hash = "#/reminders"; note.close(); };
+      });
+    }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    try {
+      const list = await request("/reminders");
+      setItems(list); setStatus("ready"); setError("");
+      alertNew(list);
+    } catch (problem) { setError(problem.message); setStatus("error"); }
+  }, [alertNew]);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    refresh();
+    const timer = setInterval(refresh, 30000);
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
+  }, [enabled, refresh]);
+
+  const act = useCallback(async (work, done) => {
+    try { await work(); if (done) notify(done); await refresh(); return true; }
+    catch (problem) { notify(problem.message, "error"); return false; }
+  }, [notify, refresh]);
+
+  return {
+    items, status, error, refresh,
+    due: items.filter((item) => item.status === "fired"),
+    create: (text, dueAt) => act(() => request("/reminders", { method: "POST", body: JSON.stringify({ text, due_at: dueAt }) }), "Reminder set."),
+    dismiss: (id) => act(() => request(`/reminders/${id}/dismiss`, { method: "POST" })),
+    cancel: (id) => act(() => request(`/reminders/${id}`, { method: "DELETE" }), "Reminder cancelled."),
+  };
 }

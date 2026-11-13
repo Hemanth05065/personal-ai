@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from backend.core.config import get_settings
@@ -20,7 +21,7 @@ async def research(payload: ResearchRequest, db: Database) -> ResearchResponse:
         sources = await WikipediaResearch().collect(payload.query, payload.max_sources)
         safe_sources = []
         for item in sources:
-            result = record_scan(db, item["excerpt"], item["url"])
+            result = await run_in_threadpool(record_scan, db, item["excerpt"], item["url"])
             if result.safe:
                 safe_sources.append(item)
         if not safe_sources:

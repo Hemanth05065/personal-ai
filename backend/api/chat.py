@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -84,14 +85,13 @@ def _prepare(payload: ChatRequest, db: Session) -> tuple[str, list[dict[str, str
 @router.post("", response_model=ChatResponse)
 async def chat(payload: ChatRequest, db: Database) -> ChatResponse:
     settings = get_settings()
-    conversation_id, messages, memories = _prepare(payload, db)
+    conversation_id, messages, memories = await run_in_threadpool(_prepare, payload, db)
     try:
         answer = await OllamaClient(settings).chat(messages, memories)
     except OllamaUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    db.add(Message(conversation_id=conversation_id, role="assistant", content=answer))
-    db.commit()
+    await run_in_threadpool(_save_message, conversation_id, "assistant", answer)
     return ChatResponse(conversation_id=conversation_id, message=answer, model=settings.model)
 
 
@@ -123,7 +123,8 @@ async def chat_stream(
     Whatever text arrived is saved even if the client stops the reply early.
     """
     settings = get_settings()
-    conversation_id, messages, memories = _prepare(payload, db)
+    # Database work goes to a worker thread; the event loop must never block on it.
+    conversation_id, messages, memories = await run_in_threadpool(_prepare, payload, db)
 
     async def events() -> AsyncIterator[str]:
         parts: list[str] = []
@@ -136,13 +137,14 @@ async def chat_stream(
                 if event["type"] == "delta":
                     parts.append(event["text"])
                 else:
-                    _save_message(conversation_id, "tool_event", json.dumps(event["tool"]))
+                    await run_in_threadpool(_save_message, conversation_id, "tool_event", json.dumps(event["tool"]))
                 yield _event(event)
             completed = True
         except OllamaUnavailable as exc:
             error = str(exc)
         finally:
             # Runs on normal end, on error, and when the client disconnects (Stop).
+            # Stays synchronous: a cancelled generator can't reliably await. One short write.
             if parts:
                 message_id = _save_message(conversation_id, "assistant", "".join(parts))
         if error:

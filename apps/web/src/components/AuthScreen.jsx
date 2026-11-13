@@ -39,7 +39,7 @@ export default function AuthScreen({ mode, error: initialError, onSignedIn, onRe
         </label>
         <label>Password
           <input required type="password" minLength={isBootstrap ? 12 : 1} autoComplete={isBootstrap ? "new-password" : "current-password"} value={draft.password} onChange={update("password")} aria-describedby={isBootstrap ? "pw-hint" : undefined} />
-          {isBootstrap && <small id="pw-hint">At least 12 characters.</small>}
+          {isBootstrap && <small id="pw-hint">At least 12 characters, using 3 of: lowercase, uppercase, numbers, symbols.</small>}
         </label>
         <label>Device name
           <input required value={draft.device_name} onChange={update("device_name")} aria-describedby="device-hint" />

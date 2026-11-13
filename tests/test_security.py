@@ -114,3 +114,13 @@ def test_secret_api_never_returns_ciphertext_or_value(client):
     listing = client.get("/api/v1/security/secrets")
     assert listing.status_code == 200
     assert "private-token-value" not in listing.text
+
+
+def test_shared_tls_context_is_reused_and_still_verifies():
+    import ssl
+
+    from backend.services.http import tls_context
+
+    assert tls_context() is tls_context()  # built once (performance)
+    assert tls_context().verify_mode == ssl.CERT_REQUIRED  # but never weakened
+    assert tls_context().check_hostname is True

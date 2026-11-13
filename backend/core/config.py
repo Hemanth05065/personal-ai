@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./assistant.db"
     ollama_url: str = "http://127.0.0.1:11434"
     model: str = "qwen3.5:4b"
+    # Local Ollama model that turns text into vectors for file search.
+    embedding_model: str = "nomic-embed-text"
     allowed_origins: str = "http://localhost:5173"
     max_context_messages: int = 20
     workspace_dir: Path = Path("assistant_workspace")
@@ -25,6 +27,9 @@ class Settings(BaseSettings):
     openshell_enabled: bool = False
     # Approvals nobody decides on expire, so an old request can't be approved by surprise later.
     approval_pending_hours: int = 24
+    # The 30-second loop that runs automations and fires reminders. Tests turn it
+    # off and call the scheduler functions directly, so nothing races with them.
+    scheduler_enabled: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="ASSISTANT_", extra="ignore"

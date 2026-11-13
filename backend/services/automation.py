@@ -21,6 +21,7 @@ from backend.security.approval import expire_stale_approvals
 from backend.security.audit import append_security_event
 from backend.security.emergency import emergency_active
 from backend.services.execution import execute_tool_call
+from backend.services.reminders import fire_due_reminders
 from backend.services.tools import TOOL_RISKS
 
 # Principals that have no row in the users table (API key, auth disabled in development).
@@ -130,7 +131,13 @@ def run_due_automations() -> int:
         db.close()
 
 
+def fire_reminders() -> int:
+    with SessionLocal() as db:
+        return fire_due_reminders(db)
+
+
 async def automation_loop() -> None:
     while True:
         await asyncio.to_thread(run_due_automations)
+        await asyncio.to_thread(fire_reminders)
         await asyncio.sleep(30)

@@ -3,6 +3,7 @@ import hmac
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -14,7 +15,9 @@ from backend.api import (
     files,
     health,
     memory,
+    reminders,
     research,
+    search,
     security,
     tasks,
 )
@@ -27,11 +30,12 @@ from backend.services.automation import automation_loop
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    scheduler = asyncio.create_task(automation_loop())
+    scheduler = asyncio.create_task(automation_loop()) if get_settings().scheduler_enabled else None
     try:
         yield
     finally:
-        scheduler.cancel()
+        if scheduler:
+            scheduler.cancel()
 
 
 settings = get_settings()
@@ -77,25 +81,33 @@ async def authenticate_request(request: Request, call_next):
         request.state.principal = Principal("local-development", "local", "admin", service=True)
         return await call_next(request)
 
-    db = SessionLocal()
-    try:
-        authenticated = authenticate_session(
-            db,
-            request.cookies.get(SESSION_COOKIE),
-            request.cookies.get(DEVICE_COOKIE),
-        )
-        if authenticated is None:
-            return JSONResponse(status_code=401, content={"detail": "Authentication required"})
-        principal, session = authenticated
-        request.state.principal = principal
-        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-            from backend.api.auth import valid_csrf
+    # Database work runs in a worker thread, never on the event loop: a blocked
+    # loop can't return finished requests' connections, which deadlocked the
+    # server under ~20 concurrent requests (found by load testing).
+    authenticated = await run_in_threadpool(
+        _check_session, request.cookies.get(SESSION_COOKIE), request.cookies.get(DEVICE_COOKIE)
+    )
+    if authenticated is None:
+        return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+    principal, csrf_hash = authenticated
+    request.state.principal = principal
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        from backend.api.auth import valid_csrf
 
-            if not valid_csrf(request.headers.get("X-CSRF-Token"), session.csrf_hash):
-                return JSONResponse(status_code=403, content={"detail": "CSRF validation failed"})
-        return await call_next(request)
-    finally:
-        db.close()
+        if not valid_csrf(request.headers.get("X-CSRF-Token"), csrf_hash):
+            return JSONResponse(status_code=403, content={"detail": "CSRF validation failed"})
+    return await call_next(request)
+
+
+def _check_session(session_token: str | None, device_token: str | None) -> tuple[Principal, str] | None:
+    """Validate the session and release the connection before the request runs,
+    so one request never holds two pooled connections at once."""
+    with SessionLocal() as db:
+        authenticated = authenticate_session(db, session_token, device_token)
+        if authenticated is None:
+            return None
+        principal, session = authenticated
+        return principal, session.csrf_hash
 
 
 @app.exception_handler(DatabaseBusy)
@@ -111,6 +123,8 @@ app.include_router(memory.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(files.router, prefix="/api/v1")
 app.include_router(research.router, prefix="/api/v1")
+app.include_router(search.router, prefix="/api/v1")
+app.include_router(reminders.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(automations.router, prefix="/api/v1")
 

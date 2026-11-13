@@ -69,3 +69,32 @@ def test_cors_preflight_is_not_blocked_by_auth():
     finally:
         settings.auth_required = old_auth
         Base.metadata.drop_all(bind=engine)
+
+
+def test_last_seen_is_not_written_on_every_request():
+    """Reads must stay reads: "last seen" is refreshed at most once a minute."""
+    from datetime import timedelta
+
+    from backend.database import SessionLocal
+    from backend.models.entities import AuthSession
+    from backend.security.auth import authenticate_session, create_login, create_user
+
+    Base.metadata.create_all(bind=engine)
+    try:
+        with SessionLocal() as db:
+            user = create_user(db, "seen-user", "LongLocalPassword!42", "admin")
+            tokens = create_login(db, user, "pytest")
+            session = db.scalars(__import__("sqlalchemy").select(AuthSession)).one()
+            first = session.last_seen
+
+            assert authenticate_session(db, tokens.session_token, tokens.device_token)
+            db.refresh(session)
+            assert session.last_seen == first  # a request within the minute writes nothing
+
+            session.last_seen = first - timedelta(minutes=2)
+            db.commit()
+            assert authenticate_session(db, tokens.session_token, tokens.device_token)
+            db.refresh(session)
+            assert session.last_seen > first - timedelta(minutes=2)  # stale, so refreshed
+    finally:
+        Base.metadata.drop_all(bind=engine)

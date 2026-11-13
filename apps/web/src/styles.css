@@ -186,6 +186,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   margin: var(--s4) clamp(var(--s4), 4vw, var(--s6)) 0; padding: var(--s3) var(--s4);
   border: 1px solid var(--border-strong); border-radius: var(--r-ctl); background: var(--surface-2); font-size: var(--t-sm);
 }
+.due { display: grid; gap: var(--s2); margin: var(--s4) clamp(var(--s4), 4vw, var(--s6)) 0; padding: var(--s3) var(--s4); border: 2px solid var(--text); border-radius: var(--r-ctl); background: var(--surface); }
+.due-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
+.due-item p { overflow-wrap: anywhere; }
+.notify-setting { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
+.rows-flush { border: 0; border-radius: 0; }
 .notice-error { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
 
 .main { flex: 1; min-height: 0; overflow-y: auto; padding: var(--s5) clamp(var(--s4), 4vw, var(--s6)) var(--s7); }
@@ -214,6 +219,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
   display: flex; width: 100%; justify-content: space-between; gap: var(--s4); padding: var(--s2) 0; min-height: var(--control);
   border: 0; background: transparent; text-align: left; align-items: center;
 }
+.rows > li.search-hit { display: grid; gap: 0; justify-content: stretch; }
+.snippet { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .row-button[aria-current="true"] { font-weight: 650; color: var(--accent); }
 .row-button span:first-child { overflow-wrap: anywhere; }
 

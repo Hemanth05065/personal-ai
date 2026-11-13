@@ -7,6 +7,8 @@ os.environ["ASSISTANT_DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["ASSISTANT_AUTH_REQUIRED"] = "false"
 os.environ["ASSISTANT_OPA_REQUIRED"] = "false"
 os.environ["ASSISTANT_SECURITY_DIR"] = ".test-security"
+# The background loop would race with tests that call the scheduler directly.
+os.environ["ASSISTANT_SCHEDULER_ENABLED"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,21 +20,33 @@ from backend.security.auth import create_user
 from backend.security.throttle import login_throttle
 
 TEST_PASSWORD = "LongLocalPassword!42"
+# All test files go here (the system temp folder may be locked down on this machine).
+TEST_ROOT = Path(".test-workspaces")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def remove_test_files_after_run():
+    """Delete everything tests wrote once the run ends, including folders a test
+    set up itself and files Windows kept locked until their handles closed."""
+    yield
+    shutil.rmtree(TEST_ROOT, ignore_errors=True)
 
 
 @pytest.fixture
 def client():
-    get_settings().workspace_dir = Path(".test-workspaces") / uuid.uuid4().hex
+    workspace = TEST_ROOT / uuid.uuid4().hex
+    get_settings().workspace_dir = workspace
     Base.metadata.create_all(bind=engine)
     with TestClient(app) as test_client:
         yield test_client
     Base.metadata.drop_all(bind=engine)
+    shutil.rmtree(workspace, ignore_errors=True)
 
 
 @pytest.fixture
 def scratch_dir():
-    """A per-test folder inside the project (the system temp folder may be locked down)."""
-    path = Path(".test-workspaces") / "scratch" / uuid.uuid4().hex
+    """A per-test folder for files a test creates directly."""
+    path = TEST_ROOT / "scratch" / uuid.uuid4().hex
     path.mkdir(parents=True)
     yield path.resolve()
     shutil.rmtree(path, ignore_errors=True)

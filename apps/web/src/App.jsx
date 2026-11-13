@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { request, setCsrf, API_KEY } from "./api.js";
-import { goTo, useChat, useMedia, useRoute } from "./hooks.js";
+import { goTo, useChat, useMedia, useReminders, useRoute } from "./hooks.js";
 import AuthScreen from "./components/AuthScreen.jsx";
 import Sidebar, { NAV } from "./components/Sidebar.jsx";
 import SafetyStrip from "./components/SafetyStrip.jsx";
 import ChatView from "./views/ChatView.jsx";
 import ResearchView from "./views/ResearchView.jsx";
 import MemoryView from "./views/MemoryView.jsx";
+import RemindersView, { formatWhen } from "./views/RemindersView.jsx";
 import FilesView from "./views/FilesView.jsx";
 import TasksView from "./views/TasksView.jsx";
 import SecurityView from "./views/SecurityView.jsx";
@@ -15,6 +16,7 @@ const SUBTITLES = {
   chat: "Replies are generated on this computer.",
   research: "Free sources, scanned for prompt injection, summarized locally.",
   memory: "What the assistant remembers between conversations.",
+  reminders: "Alerts at the top of the app and as Windows notifications.",
   files: "Only the local assistant workspace is reachable.",
   tasks: "Anything with side effects waits for your approval.",
   security: "Access, audit integrity, the sandbox and the emergency stop.",
@@ -36,6 +38,7 @@ export default function App() {
   const notify = useCallback((text, kind = "info") => setNotice({ text, kind }), []);
   const ready = authState === "ready";
   const chat = useChat(notify, ready);
+  const reminders = useReminders(ready, notify);
 
   const refreshSafety = useCallback(async () => {
     try { setSafety(await request("/security/status")); } catch { setSafety(null); }
@@ -99,6 +102,7 @@ export default function App() {
     chat: <ChatView chat={chat} notify={notify} modelReady={modelReady} refreshSafety={refreshSafety} />,
     research: <ResearchView {...shared} />,
     memory: <MemoryView {...shared} />,
+    reminders: <RemindersView reminders={reminders} />,
     files: <FilesView {...shared} />,
     tasks: <TasksView {...shared} />,
     security: <SecurityView {...shared} status={safety} />,
@@ -119,6 +123,13 @@ export default function App() {
       {notice && <div className={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
         <span>{notice.text}</span>
         <button type="button" className="btn btn-sm" onClick={() => setNotice(null)}>Dismiss</button>
+      </div>}
+      {reminders.due.length > 0 && <div className="due" role="alert">
+        {reminders.due.slice(0, 3).map((item) => <div className="due-item" key={item.id}>
+          <p><strong>Reminder:</strong> {item.text} <span className="muted">(due {formatWhen(item.due_at)})</span></p>
+          <button type="button" className="btn btn-sm" onClick={() => reminders.dismiss(item.id)}>Dismiss</button>
+        </div>)}
+        {reminders.due.length > 3 && <a href="#/reminders">{reminders.due.length - 3} more on the Reminders screen</a>}
       </div>}
       <main id="main" ref={mainRef} tabIndex={-1} className={`main${view === "chat" ? " main-chat" : ""}`}>{body}</main>
     </div>

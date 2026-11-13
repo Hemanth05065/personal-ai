@@ -17,6 +17,10 @@ connect_args = {"check_same_thread": False} if settings.database_url.startswith(
 engine_options: dict = {"connect_args": connect_args}
 if settings.database_url == "sqlite:///:memory:":
     engine_options["poolclass"] = StaticPool
+elif settings.database_url.startswith("sqlite"):
+    # FastAPI runs sync endpoints on up to 40 worker threads; the default pool
+    # (5 + 10 overflow) made busy moments queue for connections.
+    engine_options.update(pool_size=20, max_overflow=20)
 engine = create_engine(settings.database_url, **engine_options)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

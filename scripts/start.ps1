@@ -18,13 +18,23 @@ $npmExecutable = if ($npmCommand) { $npmCommand.Source } else { $npmFile.FullNam
 $nodeDirectory = Split-Path -Parent $npmExecutable
 $env:Path = "$nodeDirectory;$env:Path"
 
+# OPA is optional unless ASSISTANT_OPA_REQUIRED=true; the built-in policy enforces the
+# same rules. Windows App Control blocks opa.exe on this PC, so a failed start only warns.
 $opaExecutable = Join-Path $projectRoot "tools\opa\opa.exe"
-if (-not (Test-Path -LiteralPath $opaExecutable)) {
-    throw "OPA is missing. Run .\scripts\setup-security.ps1 first."
-}
 $opaListener = Get-NetTCPConnection -LocalPort 8181 -State Listen -ErrorAction SilentlyContinue
-if (-not $opaListener) {
-    $opa = Start-Process -FilePath $opaExecutable -ArgumentList "run", "--server", "--addr=127.0.0.1:8181", "$projectRoot\security\opa" -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
+if ((Test-Path -LiteralPath $opaExecutable) -and -not $opaListener) {
+    try {
+        $opa = Start-Process -FilePath $opaExecutable -ArgumentList "run", "--server", "--addr=127.0.0.1:8181", "$projectRoot\security\opa" -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -ErrorAction Stop
+    } catch {
+        Write-Warning "OPA did not start: $($_.Exception.Message) The built-in policy is used instead."
+    }
+}
+
+# Ollama must be running for chat and search.
+try {
+    Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -TimeoutSec 3 | Out-Null
+} catch {
+    Write-Warning "Ollama is not running. Start the Ollama app so chat and file search work."
 }
 
 $backend = Start-Process -FilePath ".\.venv\Scripts\python.exe" -ArgumentList "-m", "uvicorn", "backend.main:app", "--reload" -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru

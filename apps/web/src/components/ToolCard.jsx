@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { request } from "../api.js";
 
-const ACTION_LABEL = { list_files: "List files", read_file: "Read a file", write_file: "Write a file" };
+const ACTION_LABEL = { list_files: "List files", read_file: "Read a file", search_files: "Search files", write_file: "Write a file" };
 
 // What each status means, in the user's words. Every value comes from the server.
 const STATUS = {

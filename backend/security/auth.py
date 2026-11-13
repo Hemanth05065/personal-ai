@@ -14,6 +14,7 @@ from backend.security.audit import append_security_event
 
 SESSION_COOKIE = "assistant_session"
 DEVICE_COOKIE = "assistant_device"
+LAST_SEEN_EVERY = timedelta(minutes=1)
 
 
 @dataclass(frozen=True)
@@ -162,9 +163,13 @@ def authenticate_session(
         return None
     if not hmac.compare_digest(device.token_hash, hash_token(device_token)):
         return None
-    session.last_seen = now_utc()
-    device.last_seen = now_utc()
-    db.commit()
+    # Recording "last seen" on every request turned each read into a write that
+    # takes the database write lock. Once a minute is precise enough.
+    current = now_utc()
+    if _aware(session.last_seen) <= current - LAST_SEEN_EVERY:
+        session.last_seen = current
+        device.last_seen = current
+        db.commit()
     return Principal(user.id, user.username, user.role, session.id), session
 
 

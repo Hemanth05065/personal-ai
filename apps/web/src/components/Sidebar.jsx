@@ -2,7 +2,7 @@ import React from "react";
 import { ConfirmButton } from "./ui.jsx";
 
 export const NAV = [
-  ["chat", "Chat"], ["research", "Research"], ["memory", "Memory"],
+  ["chat", "Chat"], ["research", "Research"], ["memory", "Memory"], ["reminders", "Reminders"],
   ["files", "Files"], ["tasks", "Tasks and approvals"], ["security", "Security"],
 ];
 

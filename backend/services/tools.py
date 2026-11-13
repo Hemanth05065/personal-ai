@@ -18,8 +18,8 @@ class ToolResult:
         return json.dumps({"summary": self.summary, "data": self.data}, ensure_ascii=False)
 
 
-SUPPORTED_TOOLS = {"information", "list_files", "read_file", "write_file"}
-TOOL_RISKS = {"information": 0, "list_files": 1, "read_file": 1, "write_file": 2}
+SUPPORTED_TOOLS = {"information", "list_files", "read_file", "search_files", "write_file"}
+TOOL_RISKS = {"information": 0, "list_files": 1, "read_file": 1, "search_files": 1, "write_file": 2}
 
 
 def _workspace(settings: Settings) -> Path:
@@ -91,4 +91,8 @@ def execute_tool(tool_name: str, arguments: dict, settings: Settings) -> ToolRes
         return read_file(settings, arguments)
     if tool_name == "write_file":
         return write_file(settings, arguments)
+    if tool_name == "search_files":
+        from backend.services.search import search_workspace  # search imports this module
+
+        return search_workspace(settings, arguments)
     raise ToolError(f"Unsupported tool: {tool_name}")

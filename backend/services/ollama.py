@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import httpx
 
 from backend.core.config import Settings
+from backend.services.http import tls_context
 
 SYSTEM_PROMPT = """You are a private, local personal assistant. Be concise, accurate,
 and transparent. Never claim an external action succeeded unless a tool result proves it.
@@ -61,7 +62,7 @@ class OllamaClient:
     async def chat(self, messages: list[dict[str, str]], memories: list[str]) -> str:
         payload = self._payload(messages, memories, stream=False)
         try:
-            async with httpx.AsyncClient(timeout=120, transport=self.transport) as client:
+            async with httpx.AsyncClient(timeout=120, transport=self.transport, verify=tls_context()) as client:
                 response = await client.post(f"{self.settings.ollama_url}/api/chat", json=payload)
                 response.raise_for_status()
         except (httpx.HTTPError, OSError) as exc:
@@ -85,7 +86,7 @@ class OllamaClient:
         timeout = httpx.Timeout(connect=5, read=120, write=30, pool=5)
         try:
             async with (
-                httpx.AsyncClient(timeout=timeout, transport=self.transport) as client,
+                httpx.AsyncClient(timeout=timeout, transport=self.transport, verify=tls_context()) as client,
                 client.stream("POST", f"{self.settings.ollama_url}/api/chat", json=payload) as response,
             ):
                 response.raise_for_status()
