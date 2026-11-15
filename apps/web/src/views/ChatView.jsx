@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { request } from "../api.js";
 import Markdown from "../components/Markdown.jsx";
 import ToolCard from "../components/ToolCard.jsx";
+import PreviewPane from "../components/PreviewPane.jsx";
+import { bestRunnable, fixRequest } from "../preview.js";
 
 const WHO = { user: "You", assistant: "Assistant", error: "Problem" };
+const MAX_FIXES = 2;
 
 function parseTool(content) {
   try { return JSON.parse(content); } catch { return null; }
@@ -15,6 +18,41 @@ function Thinking() {
 
 export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
   const { messages, busy, send } = chat;
+  // Do-it mode: the user's own commands run without an approval click (saved per user on the server).
+  const [doIt, setDoIt] = useState(null);
+  useEffect(() => { request("/settings/me").then((s) => setDoIt(s.autopilot)).catch(() => setDoIt(false)); }, []);
+  async function toggleDoIt() {
+    try {
+      const saved = await request("/settings/me", { method: "PUT", body: JSON.stringify({ autopilot: !doIt }) });
+      setDoIt(saved.autopilot);
+      notify(saved.autopilot ? "Do-it mode is on. File changes you ask for run straight away, and each one can be undone." : "Do-it mode is off. File changes wait for your approval.");
+    } catch (error) { notify(error.message, "error"); }
+  }
+  // Code preview beside the chat: { lang, code, title, test }.
+  const [preview, setPreview] = useState(null);
+  const [testStatus, setTestStatus] = useState(null); // testing | passed | fixing | failed
+  const openPreview = (lang, code, title = "Code from the chat") => { setTestStatus(null); setPreview({ lang, code, title }); };
+  // Self-check loop: a coding reply is run and played automatically; errors go back to the
+  // coder as a visible message, at most MAX_FIXES times per request you send.
+  const fixAttempts = useRef(0);
+  const autoOpened = useRef(null);
+  useEffect(() => {
+    // Only live replies carry `coding`, so reopening an old conversation doesn't start a test.
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant" || last.streaming || !last.coding || autoOpened.current === last) return;
+    autoOpened.current = last;
+    const block = bestRunnable(last.content);
+    if (!block) return;
+    setTestStatus("testing");
+    setPreview({ ...block, test: true, title: fixAttempts.current ? `Fixed version (attempt ${fixAttempts.current})` : "Latest coding reply" });
+  }, [messages]);
+  const onTestDone = useCallback((errors, code, lang) => {
+    if (!errors.length) { setTestStatus("passed"); return; }
+    if (fixAttempts.current >= MAX_FIXES) { setTestStatus("failed"); return; }
+    fixAttempts.current += 1;
+    setTestStatus("fixing");
+    send(fixRequest(errors, fixAttempts.current, MAX_FIXES, code, lang));
+  }, [send]);
   const [input, setInput] = useState("");
   const [listening, setListening] = useState(false);
   const endRef = useRef(null);
@@ -44,13 +82,14 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
   }, [approvalKey, busy]);
 
   const card = (tool) => <ToolCard key={tool.id} tool={tool} approvalStatus={approvalStatus[tool.approval_id]}
-    notify={notify} onDecided={refreshSafety} />;
+    notify={notify} onDecided={refreshSafety} onRun={openPreview} />;
 
   async function submit(event) {
     event.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
+    fixAttempts.current = 0; // a new request gets its own fix attempts
     await send(text);
     refreshSafety(); // a proposal changes the approvals count in the top bar
   }
@@ -74,7 +113,8 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   }
 
-  return <div className="chat">
+  return <div className={`chat-wrap${preview ? " has-preview" : ""}`}>
+  <div className="chat">
     {/* aria-busy while streaming: screen readers announce the finished reply once, not every fragment. */}
     <div className="messages" role="log" aria-live="polite" aria-busy={busy} aria-label="Conversation">
       <div className="messages-inner">
@@ -95,12 +135,12 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
           }
           const tools = message.tools || [];
           return <article className={`msg msg-${message.role}`} key={key}>
-            <p className="msg-who">{WHO[message.role] || message.role}</p>
+            <p className="msg-who">{WHO[message.role] || message.role}{message.coding && <span className="msg-tag">Coding model</span>}</p>
             {tools.map(card)}
             {message.role === "assistant"
               ? (message.streaming && !message.content
                 ? (tools.length ? null : <Thinking />)
-                : message.content && <Markdown text={message.content} />)
+                : message.content && <Markdown text={message.content} onRun={message.streaming ? undefined : openPreview} />)
               : <p className="msg-text">{message.content}</p>}
             {message.stopped && <p className="muted">Stopped. The text above was kept.</p>}
             {message.role === "assistant" && !message.streaming && message.content && <button type="button" className="btn btn-quiet btn-sm" onClick={() => speak(message.content)}>Read aloud</button>}
@@ -117,12 +157,18 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
       <textarea aria-label="Message" rows={2} value={input} placeholder="Message your assistant" onChange={(event) => setInput(event.target.value)}
         onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) submit(event); }} />
       <div className="composer-actions">
+        {doIt !== null && <button type="button" className={`btn btn-sm do-it${doIt ? " is-on" : ""}`} aria-pressed={doIt} onClick={toggleDoIt}>Do-it mode: {doIt ? "On" : "Off"}</button>}
         <button type="button" className="btn" onClick={dictate} aria-pressed={listening}>{listening ? "Listening..." : "Dictate"}</button>
         {busy
           ? <button type="button" className="btn btn-primary" onClick={chat.stop}>Stop</button>
           : <button type="submit" className="btn btn-primary" disabled={!input.trim()}>Send</button>}
       </div>
-      <p className="muted composer-hint">Enter sends, Shift+Enter adds a line. Replies come from Ollama on this machine.</p>
+      <p className="muted composer-hint">{doIt
+        ? "Do-it mode: file changes you ask for run straight away; use Undo on a card to reverse one. If a task reads your files first, it still asks."
+        : "Enter sends, Shift+Enter adds a line. File changes wait for your approval."}</p>
     </form>
+  </div>
+  {preview && <PreviewPane preview={preview} testStatus={testStatus} onTestDone={onTestDone}
+    onClose={() => { setPreview(null); setTestStatus(null); }} />}
   </div>;
 }

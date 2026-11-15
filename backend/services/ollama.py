@@ -30,10 +30,20 @@ class ToolRequest:
 
 
 class OllamaClient:
-    def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(
+        self,
+        settings: Settings,
+        transport: httpx.AsyncBaseTransport | None = None,
+        *,
+        model: str | None = None,
+        context_tokens: int | None = None,
+    ):
         self.settings = settings
         # Tests pass an httpx.MockTransport; normal use talks to the real Ollama.
         self.transport = transport
+        # A routed request (services/routing.py) can pick another model and window.
+        self.model = model or settings.model
+        self.context_tokens = context_tokens or settings.context_tokens
 
     def _payload(
         self,
@@ -48,8 +58,9 @@ class OllamaClient:
         if system_extra:
             system = f"{system}\n\n{system_extra}"
         payload = {
-            "model": self.settings.model,
+            "model": self.model,
             "stream": stream,
+            "options": {"num_ctx": self.context_tokens},
             # Thinking models (e.g. qwen3.5) otherwise put the whole answer in
             # message.thinking and return an empty message.content.
             "think": False,

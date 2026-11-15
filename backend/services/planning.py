@@ -8,10 +8,12 @@ and audit trail. The model never gets a route around this.
 import json
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.core.policy import RiskLevel, evaluate_action
 from backend.models.entities import Approval, ApprovalContext, AuditLog, Task, ToolCall
+from backend.security.approval import grant_approval
 from backend.security.audit import append_security_event
 from backend.security.auth import Principal
 from backend.security.emergency import emergency_active
@@ -113,3 +115,41 @@ def plan_task(
         db.refresh(task)
         db.refresh(call)
     return PlannedTask(task, call, approval)
+
+
+def approve_and_run(db: Session, approval: Approval, principal: Principal, *, automatic: bool = False) -> ToolCall | None:
+    """Approve a pending request and run it: the one path for the Approve button and Do-it mode.
+
+    The approver's own role must allow the action's risk, the emergency stop
+    applies, and the grant is bound to the exact tool and arguments. Raises
+    PlanRejected if the approver may not run it.
+    """
+    task = db.get(Task, approval.task_id)
+    allowed = evaluate_action(
+        approval.action,
+        RiskLevel(task.risk_level if task else RiskLevel.SENSITIVE),
+        principal.role,
+        emergency_active(db),
+    )
+    if not allowed.allowed:
+        append_security_event(
+            db, "approval.decide", "denied", f"approval={approval.id}; {allowed.reason}", principal.user_id
+        )
+        db.commit()
+        raise PlanRejected(403, allowed.reason)
+    outcome = "auto_approved" if automatic else "approved"
+    approval.status = "approved"
+    if task:
+        task.status = "planned"
+    call = db.scalar(select(ToolCall).where(ToolCall.task_id == approval.task_id))
+    if call:
+        call.status = "pending"
+        grant_approval(db, approval, call, principal.user_id)
+    db.add(AuditLog(action="approval.decide", outcome=outcome, detail=approval.id))
+    detail = f"approval={approval.id}" + ("; do-it mode" if automatic else "")
+    append_security_event(db, "approval.decide", outcome, detail, principal.user_id)
+    db.commit()
+    db.refresh(approval)
+    if task and call:
+        execute_tool_call(db, task, call, approval)
+    return call

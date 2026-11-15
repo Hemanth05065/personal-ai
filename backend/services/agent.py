@@ -23,7 +23,7 @@ from backend.database import SessionLocal
 from backend.security.auth import Principal
 from backend.security.content import isolate_untrusted_content, record_scan
 from backend.services.ollama import OllamaClient, ToolRequest
-from backend.services.planning import PlanRejected, plan_task
+from backend.services.planning import PlannedTask, PlanRejected, approve_and_run, plan_task
 
 MAX_ROUNDS = 3
 MAX_CALLS_PER_ROUND = 4
@@ -124,7 +124,35 @@ def _describe(name: str, arguments: dict) -> str:
     return f"Write {size} bytes to {path}"
 
 
-def handle_tool_request(principal: Principal, request: ToolRequest) -> ToolOutcome:
+def _run_now(db, principal: Principal, planned: PlannedTask, card: dict) -> ToolOutcome:
+    """Do-it mode: approve through the normal approval path and run immediately."""
+    try:
+        call = approve_and_run(db, planned.approval, principal, automatic=True)
+    except PlanRejected as exc:
+        card["status"] = "denied"
+        return ToolOutcome(card, final_text=f"I can’t do that ({card['summary']}): {exc.reason}")
+    result = json.loads((call.result if call else None) or "{}")
+    if call is None or call.status != "completed":
+        card["status"] = "failed"
+        return ToolOutcome(card, final_text=f"I tried to {card['summary'].lower()}, but it failed: {result.get('error', 'unknown error')}")
+    card["status"] = "completed"
+    card["auto"] = True
+    card["undo_id"] = call.id
+    # The tool's own summary of what happened, never the model's.
+    return ToolOutcome(card, final_text=f"Done: {result.get('summary', card['summary'])} You can undo it from the card.")
+
+
+# Actions Do-it mode may run without an approval click. Reads never needed one;
+# hard-blocked actions (money, messages, deletes, credentials) aren't tools at all.
+AUTO_RUN_ACTIONS = {"write_file"}
+# Tools whose results put file contents in front of the model. After one of these,
+# a write in the same task could have been planted by text in a file, so it asks.
+CONTENT_READS = {"read_file", "search_files"}
+
+
+def handle_tool_request(
+    principal: Principal, request: ToolRequest, autopilot: bool = False, tainted: bool = False
+) -> ToolOutcome:
     card = {"id": uuid.uuid4().hex, "action": request.name, "target": None, "status": "rejected",
             "summary": "", "approval_id": None, "task_id": None}
     arguments, problem = _validate(request)
@@ -150,8 +178,17 @@ def handle_tool_request(principal: Principal, request: ToolRequest) -> ToolOutco
 
         card["task_id"] = planned.task.id
         if planned.needs_approval:
-            card["status"] = "awaiting_approval"
             card["approval_id"] = planned.approval.id
+            if autopilot and not tainted and request.name in AUTO_RUN_ACTIONS:
+                return _run_now(db, principal, planned, card)
+            card["status"] = "awaiting_approval"
+            if autopilot and tainted:
+                card["reason"] = "This task read your files first, so it asks before writing."
+                return ToolOutcome(card, final_text=(
+                    f"I’ve proposed this action: {card['summary']}. Because this task read your files first, "
+                    "Do-it mode asks before writing, in case a file contained planted instructions. "
+                    "Approve it here if it’s what you asked for."
+                ))
             return ToolOutcome(card, final_text=(
                 f"I’ve proposed this action: {card['summary']}. Nothing has been changed yet. "
                 "It runs only if you approve it, here or in Tasks and approvals."
@@ -200,9 +237,18 @@ async def run_agent(
     principal: Principal,
     messages: list[dict],
     memories: list[str],
+    autopilot: bool = False,
+    extra_guidance: str = "",
 ) -> AsyncIterator[dict]:
-    """Yield {"type": "delta", "text"} and {"type": "tool", "tool": card} events."""
+    """Yield {"type": "delta", "text"} and {"type": "tool", "tool": card} events.
+
+    autopilot (Do-it mode) runs the user's requested writes without an approval
+    click, unless this task already read file contents. extra_guidance is added to
+    the system prompt (coding mode uses it).
+    """
+    guidance = f"{AGENT_GUIDANCE}\n\n{extra_guidance}" if extra_guidance else AGENT_GUIDANCE
     conversation = list(messages)
+    tainted = False
     wrote_text = False
 
     def say(text: str) -> dict:
@@ -213,7 +259,7 @@ async def run_agent(
 
     for _ in range(MAX_ROUNDS):
         current = _Round()
-        async for item in ollama.stream_chat(conversation, memories, tools=OLLAMA_TOOLS, system_extra=AGENT_GUIDANCE):
+        async for item in ollama.stream_chat(conversation, memories, tools=OLLAMA_TOOLS, system_extra=guidance):
             if isinstance(item, ToolRequest):
                 current.requests.append(item)
             else:
@@ -226,7 +272,9 @@ async def run_agent(
         handled: list[tuple[ToolRequest, ToolOutcome]] = []
         for request in current.requests[:MAX_CALLS_PER_ROUND]:
             # Tools do file IO and (for search) embedding calls; keep them off the event loop.
-            outcome = await asyncio.to_thread(handle_tool_request, principal, request)
+            outcome = await asyncio.to_thread(handle_tool_request, principal, request, autopilot, tainted)
+            if request.name in CONTENT_READS and outcome.card["status"] == "completed":
+                tainted = True
             handled.append((request, outcome))
             yield {"type": "tool", "tool": outcome.card}
         endings = [outcome.final_text for _, outcome in handled if outcome.final_text]

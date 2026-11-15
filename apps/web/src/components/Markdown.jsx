@@ -1,4 +1,6 @@
 import React from "react";
+import { isRunnable } from "../preview.js";
+import CopyButton from "./CopyButton.jsx";
 
 // A small, safe Markdown renderer: React elements only, never raw HTML.
 // Supports paragraphs, headings, lists, quotes, fenced code, inline code, bold, italic and http(s) links.
@@ -34,11 +36,12 @@ function parse(source) {
     if (!line.trim()) { i++; continue; }
     if (line.trim().startsWith("```")) {
       const code = [];
+      const lang = line.trim().slice(3).trim().split(/\s/)[0];
       i++;
       while (i < lines.length && !lines[i].trim().startsWith("```")) code.push(lines[i++]);
       i++;
       const indent = Math.min(...code.filter((row) => row.trim()).map((row) => row.match(/^\s*/)[0].length), Infinity);
-      blocks.push({ type: "code", text: code.map((row) => row.slice(Number.isFinite(indent) ? indent : 0)).join("\n") });
+      blocks.push({ type: "code", lang, text: code.map((row) => row.slice(Number.isFinite(indent) ? indent : 0)).join("\n") });
     } else if (/^#{1,6}\s/.test(line)) {
       blocks.push({ type: "heading", text: line.replace(/^#{1,6}\s+/, "") });
       i++;
@@ -72,12 +75,22 @@ function lines(text, prefix) {
   return text.split("\n").flatMap((part, index) => (index ? [<br key={`${prefix}-br${index}`} />, ...inline(part, `${prefix}-${index}`)] : inline(part, `${prefix}-${index}`)));
 }
 
-export default function Markdown({ text }) {
+/** onRun(lang, code), when given, adds a Run button to code blocks the preview can show. */
+export default function Markdown({ text, onRun }) {
   const blocks = parse(text || "");
   return <div className="prose">{blocks.map((block, index) => {
     const key = `b${index}`;
     switch (block.type) {
-      case "code": return <pre key={key}><code>{block.text}</code></pre>;
+      case "code": return <div key={key} className="code-block">
+        <div className="code-bar">
+          <span className="muted">{block.lang || "code"}</span>
+          <div className="row-actions">
+            <CopyButton text={block.text} label={`Copy this ${block.lang || "code"} block`} />
+            {onRun && isRunnable(block.lang, block.text) && <button type="button" className="btn btn-sm btn-primary" onClick={() => onRun(block.lang, block.text)}>Run</button>}
+          </div>
+        </div>
+        <pre><code>{block.text}</code></pre>
+      </div>;
       case "heading": return <p key={key} className="prose-heading">{inline(block.text, key)}</p>;
       case "ul": return <ul key={key}>{block.items.map((item, n) => <li key={n}>{inline(item, `${key}-${n}`)}</li>)}</ul>;
       case "ol": return <ol key={key} start={block.start}>{block.items.map((item, n) => <li key={n}>{inline(item, `${key}-${n}`)}</li>)}</ol>;

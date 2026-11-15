@@ -5,16 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.core.policy import RiskLevel, evaluate_action
 from backend.database import get_db
 from backend.models.entities import Approval, ApprovalContext, AuditLog, Task, ToolCall
 from backend.models.schemas import ApprovalDetail, TaskCreate, TaskRead, ToolCallRead
-from backend.security.approval import expire_stale_approvals, grant_approval
+from backend.security.approval import expire_stale_approvals
 from backend.security.audit import append_security_event
 from backend.security.dependencies import OperatorDependency, PrincipalDependency
-from backend.security.emergency import emergency_active
-from backend.services.execution import execute_tool_call
-from backend.services.planning import PlanRejected, plan_task
+from backend.services.planning import PlanRejected, approve_and_run, plan_task
 
 router = APIRouter(tags=["tasks"])
 Database = Annotated[Session, Depends(get_db)]
@@ -95,37 +92,23 @@ def decide_approval(
         raise HTTPException(status_code=409, detail="This approval request has expired")
     if approval.status != "pending":
         raise HTTPException(status_code=409, detail="Approval has already been decided")
-    task = db.get(Task, approval.task_id)
     if decision == "approved":
-        # Approving runs the action, so the approver's own role must allow its risk.
-        allowed = evaluate_action(
-            approval.action,
-            RiskLevel(task.risk_level if task else RiskLevel.SENSITIVE),
-            principal.role,
-            emergency_active(db),
-        )
-        if not allowed.allowed:
-            append_security_event(
-                db, "approval.decide", "denied", f"approval={approval.id}; {allowed.reason}", principal.user_id
-            )
-            db.commit()
-            raise HTTPException(status_code=403, detail=allowed.reason)
-    approval.status = decision
-    if task:
-        task.status = "planned" if decision == "approved" else "cancelled"
-    call = db.scalar(select(ToolCall).where(ToolCall.task_id == approval.task_id))
-    if call:
-        call.status = "pending" if decision == "approved" else "cancelled"
-    if decision == "approved" and call:
-        grant_approval(db, approval, call, principal.user_id)
-    db.add(AuditLog(action="approval.decide", outcome=decision, detail=approval.id))
-    append_security_event(
-        db, "approval.decide", decision, f"approval={approval.id}", principal.user_id
-    )
-    db.commit()
-    db.refresh(approval)
-    if decision == "approved" and task and call:
-        execute_tool_call(db, task, call, approval)
+        try:
+            approve_and_run(db, approval, principal)
+        except PlanRejected as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.reason) from exc
+    else:
+        approval.status = "denied"
+        task = db.get(Task, approval.task_id)
+        if task:
+            task.status = "cancelled"
+        call = db.scalar(select(ToolCall).where(ToolCall.task_id == approval.task_id))
+        if call:
+            call.status = "cancelled"
+        db.add(AuditLog(action="approval.decide", outcome="denied", detail=approval.id))
+        append_security_event(db, "approval.decide", "denied", f"approval={approval.id}", principal.user_id)
+        db.commit()
+        db.refresh(approval)
     context = db.scalar(
         select(ApprovalContext).where(ApprovalContext.approval_id == approval.id)
     )

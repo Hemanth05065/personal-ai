@@ -21,6 +21,9 @@ from backend.api import (
     security,
     tasks,
 )
+from backend.api import (
+    settings as settings_api,
+)
 from backend.core.config import get_settings
 from backend.database import DatabaseBusy, SessionLocal, init_db
 from backend.security.auth import DEVICE_COOKIE, SESSION_COOKIE, Principal, authenticate_session
@@ -125,6 +128,7 @@ app.include_router(files.router, prefix="/api/v1")
 app.include_router(research.router, prefix="/api/v1")
 app.include_router(search.router, prefix="/api/v1")
 app.include_router(reminders.router, prefix="/api/v1")
+app.include_router(settings_api.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(automations.router, prefix="/api/v1")
 

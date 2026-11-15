@@ -223,6 +223,33 @@ class Reminder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
 
+class UserSetting(Base):
+    """Per-user preferences. autopilot = "Do-it mode": the user's own chat commands run without an approval click."""
+
+    __tablename__ = "user_settings"
+
+    user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    autopilot: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class FileVersion(Base):
+    """What a file looked like before a write_file call, so the write can be undone."""
+
+    __tablename__ = "file_versions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    call_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
+    path: Mapped[str] = mapped_column(String(1000))
+    existed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # None when the file didn't exist, or was too large to keep a copy of.
+    previous: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    # sha256 of what the write produced; undo refuses if the file changed since.
+    written_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class IndexedFile(Base):
     """One workspace file in the search index, with what it looked like when indexed."""
 

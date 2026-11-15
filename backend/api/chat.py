@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.api.settings import autopilot_enabled
 from backend.core.config import get_settings
 from backend.database import SessionLocal, get_db
 from backend.models.entities import AuditLog, Conversation, Memory, Message
@@ -21,6 +22,7 @@ from backend.security.content import record_scan
 from backend.security.dependencies import OperatorDependency, PrincipalDependency
 from backend.services.agent import run_agent
 from backend.services.ollama import OllamaClient, OllamaUnavailable
+from backend.services.routing import choose_model
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 Database = Annotated[Session, Depends(get_db)]
@@ -114,7 +116,7 @@ async def chat_stream(
 ) -> StreamingResponse:
     """Stream a reply as newline-delimited JSON events.
 
-    {"type": "start", "conversation_id", "model"}  once, first
+    {"type": "start", "conversation_id", "model", "coding"}  once, first
     {"type": "delta", "text"}                       for each piece of the reply
     {"type": "tool", "tool": {...}}                 when the model asked for a tool (see agent.py)
     {"type": "done", "message_id"}                  when the reply is complete
@@ -125,15 +127,20 @@ async def chat_stream(
     settings = get_settings()
     # Database work goes to a worker thread; the event loop must never block on it.
     conversation_id, messages, memories = await run_in_threadpool(_prepare, payload, db)
+    autopilot = await run_in_threadpool(autopilot_enabled, principal.user_id)
+    # Coding requests go to the coding model with a bigger window.
+    choice = choose_model(settings, payload.message)
+    ollama = OllamaClient(settings, model=choice.model, context_tokens=choice.context_tokens)
 
     async def events() -> AsyncIterator[str]:
         parts: list[str] = []
         message_id: str | None = None
         error: str | None = None
         completed = False
-        yield _event({"type": "start", "conversation_id": conversation_id, "model": settings.model})
+        yield _event({"type": "start", "conversation_id": conversation_id, "model": choice.model,
+                      "coding": choice.coding})
         try:
-            async for event in run_agent(OllamaClient(settings), principal, messages, memories):
+            async for event in run_agent(ollama, principal, messages, memories, autopilot, choice.guidance):
                 if event["type"] == "delta":
                     parts.append(event["text"])
                 else:

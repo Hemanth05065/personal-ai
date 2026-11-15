@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./assistant.db"
     ollama_url: str = "http://127.0.0.1:11434"
     model: str = "qwen3.5:4b"
+    # Coding requests go to a model trained for code (see services/routing.py).
+    # Empty string turns coding mode off and everything uses `model`.
+    coder_model: str = "qwen2.5-coder:7b"
+    # Tokens the model can see at once (prompt + reply). Ollama's small default
+    # cut long answers off; whole programs need the bigger coding window.
+    context_tokens: int = 8192
+    coder_context_tokens: int = 16384
     # Local Ollama model that turns text into vectors for file search.
     embedding_model: str = "nomic-embed-text"
     allowed_origins: str = "http://localhost:5173"
