@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,8 +22,14 @@ from backend.models.schemas import (
 from backend.security.content import record_scan
 from backend.security.dependencies import OperatorDependency, PrincipalDependency
 from backend.services.agent import run_agent
-from backend.services.ollama import OllamaClient, OllamaUnavailable
-from backend.services.routing import choose_model
+from backend.services.ollama import OllamaClient, OllamaUnavailable, model_installed
+from backend.services.routing import (
+    EXAMPLE_INPUT_PROMPT,
+    choose_model,
+    extract_example_input,
+    with_reminder,
+    without_big,
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 Database = Annotated[Session, Depends(get_db)]
@@ -48,9 +55,7 @@ def delete_conversation(conversation_id: str, _: OperatorDependency, db: Databas
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     db.delete(conversation)
-    db.add(
-        AuditLog(action="conversation.delete", outcome="success", detail=conversation_id)
-    )
+    db.add(AuditLog(action="conversation.delete", outcome="success", detail=conversation_id))
     db.commit()
     return Response(status_code=204)
 
@@ -60,7 +65,9 @@ def _prepare(payload: ChatRequest, db: Session) -> tuple[str, list[dict[str, str
     settings = get_settings()
     # The owner's own message is recorded as a finding but not blocked.
     record_scan(db, payload.message, "chat")
-    conversation = db.get(Conversation, payload.conversation_id) if payload.conversation_id else None
+    conversation = (
+        db.get(Conversation, payload.conversation_id) if payload.conversation_id else None
+    )
     if payload.conversation_id and conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     if conversation is None:
@@ -97,6 +104,32 @@ async def chat(payload: ChatRequest, db: Database) -> ChatResponse:
     return ChatResponse(conversation_id=conversation_id, message=answer, model=settings.model)
 
 
+class ExampleInputRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=60_000)
+
+
+@router.post("/example-input")
+async def example_input(payload: ExampleInputRequest, principal: PrincipalDependency) -> dict:
+    """A sample input for a Python program, so the Output panel's self-test can run it.
+
+    Uses the fast coder. The result only ever goes to the program's input() inside the
+    sandbox, never to a tool or a file.
+    """
+    del principal  # any signed-in user; the answer stays in their own browser sandbox
+    settings = get_settings()
+    client = OllamaClient(
+        settings,
+        model=settings.coder_model or settings.model,
+        context_tokens=settings.coder_context_tokens,
+    )
+    prompt = EXAMPLE_INPUT_PROMPT.replace("{code}", payload.code)
+    try:
+        reply = await client.chat([{"role": "user", "content": prompt}], [])
+    except OllamaUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"input": extract_example_input(reply)}
+
+
 def _event(data: dict) -> str:
     return json.dumps(data) + "\n"
 
@@ -116,7 +149,7 @@ async def chat_stream(
 ) -> StreamingResponse:
     """Stream a reply as newline-delimited JSON events.
 
-    {"type": "start", "conversation_id", "model", "coding"}  once, first
+    {"type": "start", "conversation_id", "model", "coding", "big"}  once, first
     {"type": "delta", "text"}                       for each piece of the reply
     {"type": "tool", "tool": {...}}                 when the model asked for a tool (see agent.py)
     {"type": "done", "message_id"}                  when the reply is complete
@@ -130,21 +163,41 @@ async def chat_stream(
     autopilot = await run_in_threadpool(autopilot_enabled, principal.user_id)
     # Coding requests go to the coding model with a bigger window.
     choice = choose_model(settings, payload.message)
-    ollama = OllamaClient(settings, model=choice.model, context_tokens=choice.context_tokens)
+    if choice.big and not await model_installed(settings, choice.model):
+        choice = without_big(settings, choice)
+    # The model sees the coding checklist after the request; the saved chat doesn't.
+    model_messages = with_reminder(messages) if choice.coding else messages
+    ollama = OllamaClient(
+        settings,
+        model=choice.model,
+        context_tokens=choice.context_tokens,
+        read_timeout=600 if choice.big else 120,
+    )
 
     async def events() -> AsyncIterator[str]:
         parts: list[str] = []
         message_id: str | None = None
         error: str | None = None
         completed = False
-        yield _event({"type": "start", "conversation_id": conversation_id, "model": choice.model,
-                      "coding": choice.coding})
+        yield _event(
+            {
+                "type": "start",
+                "conversation_id": conversation_id,
+                "model": choice.model,
+                "coding": choice.coding,
+                "big": choice.big,
+            }
+        )
         try:
-            async for event in run_agent(ollama, principal, messages, memories, autopilot, choice.guidance):
+            async for event in run_agent(
+                ollama, principal, model_messages, memories, autopilot, choice.guidance
+            ):
                 if event["type"] == "delta":
                     parts.append(event["text"])
                 else:
-                    await run_in_threadpool(_save_message, conversation_id, "tool_event", json.dumps(event["tool"]))
+                    await run_in_threadpool(
+                        _save_message, conversation_id, "tool_event", json.dumps(event["tool"])
+                    )
                 yield _event(event)
             completed = True
         except OllamaUnavailable as exc:

@@ -102,7 +102,7 @@ export function useChat(notify, enabled) {
     });
     // A finished reply keeps its text and any tool cards; an empty one is dropped.
     const settle = (reply, extra = {}) => (reply.content || reply.tools.length
-      ? { role: "assistant", content: reply.content, tools: reply.tools, coding: reply.coding, ...extra }
+      ? { role: "assistant", content: reply.content, tools: reply.tools, coding: reply.coding, big: reply.big, ...extra }
       : null);
     setMessages((items) => [...items, { role: "user", content: text }]);
     setBusy(true);
@@ -110,7 +110,7 @@ export function useChat(notify, enabled) {
       const result = await streamEvents("/chat/stream", { message: text, conversation_id: conversationId }, (event) => {
         if (event.type === "start") {
           setConversationId(event.conversation_id);
-          setMessages((items) => [...items, { role: "assistant", content: "", tools: [], streaming: true, coding: event.coding === true }]);
+          setMessages((items) => [...items, { role: "assistant", content: "", tools: [], streaming: true, coding: event.coding === true, big: event.big === true }]);
         } else if (event.type === "delta") {
           updateReply((reply) => ({ ...reply, content: reply.content + event.text }));
         } else if (event.type === "tool") {

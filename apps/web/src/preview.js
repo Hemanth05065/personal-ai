@@ -23,6 +23,15 @@ export function codeBlocks(text) {
   return blocks;
 }
 
+/**
+ * The example input the coder gave for its program: a ```text (or input/stdin) block.
+ * The self-test feeds it to input(), so the test matches the program's real input format.
+ */
+export function exampleInput(text) {
+  const block = codeBlocks(text).find((item) => ["text", "txt", "input", "stdin", "plaintext"].includes(item.lang.toLowerCase()));
+  return block ? block.code.replace(/\n$/, "") : "";
+}
+
 /** The block a "Run" should show for a whole reply: the biggest runnable one. */
 export function bestRunnable(text) {
   return codeBlocks(text)
@@ -79,7 +88,6 @@ export function fixRequest(errors, attempt, maxAttempts, code = "", lang = "html
 // frame stops it after a time limit. The browser won't let the sandbox fetch anything from
 // this computer, so the app hands it Pyodide's files by message; the frame's content policy
 // then blocks every network request, so the program can't reach the internet either.
-export const PYTHON_TEST_INPUT = ["5", "3", "hello", "2", "1", "10", "y", "n", "4", "0"];
 const PY_LIMIT_MS = 60000;
 const PY_TEST_LIMIT_MS = 20000;
 const PYODIDE_FILES = ["pyodide.mjs", "pyodide.asm.mjs", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"];
@@ -152,7 +160,11 @@ function add(text, kind) { flush(); write((out.textContent && !out.textContent.e
 // Program output arrives in pieces; the console gets it a whole line at a time.
 const pending = { out: "", err: "" };
 const log = { out: (line) => console.log(line), err: (line) => console.warn(line) };
+let printed = false;
+let readInput = false;
 function feed(kind, text) {
+  if (kind === "out" && text.trim()) printed = true;
+  if (kind === "in") readInput = true;
   write(text, kind === "out" ? "" : kind === "err" ? "warn" : "in");
   if (kind === "in") {
     // Keep the question and its answer on one console line: "How many? 12".
@@ -165,6 +177,20 @@ function feed(kind, text) {
   parts.forEach(log[kind]);
 }
 function flush() { for (const kind of Object.keys(pending)) { if (pending[kind]) log[kind](pending[kind]); pending[kind] = ""; } }
+// A program that catches its own crash and prints it still has the bug. Python's own wording
+// for these mistakes is distinctive, so the self-test treats printed copies as errors too.
+const SWALLOWED = /has no attribute '|is not defined|unsupported operand type|object is not (subscriptable|callable|iterable)|takes \\d+ positional arguments? but|Traceback \\(most recent call last\\)|maximum recursion depth|can only concatenate|list index out of range/;
+function reportSwallowed() {
+  if (!__TEST__) return;
+  // Ran without errors but did nothing visible: usually functions that are never called.
+  if (!printed && !readInput) {
+    console.error("The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end.");
+  }
+  const seen = new Set();
+  for (const line of out.textContent.split("\\n")) {
+    if (SWALLOWED.test(line) && !seen.has(line)) { seen.add(line); console.error("The program caught a Python error and printed it instead of working: " + line.trim().slice(0, 200)); }
+  }
+}
 let finished = false;
 let worker = null;
 let timer = null;
@@ -184,13 +210,19 @@ function start(files) {
     const { kind, text } = event.data;
     if (kind === "ready") status.textContent = __RUNNING__;
     else if (kind === "out" || kind === "err" || kind === "in") feed(kind, text);
-    else if (kind === "done") { add("[Program finished]", "note"); finish("Finished"); }
+    else if (kind === "done") { flush(); reportSwallowed(); add("[Program finished]", "note"); finish("Finished"); }
     else if (kind === "fail") {
       // The traceback from the user's own code down, without Pyodide's internal frames.
       const begin = text.search(/File "<exec>"/);
       add(begin >= 0 ? "Traceback (most recent call last):\\n  " + text.slice(begin).trim() : text.trim(), "err");
       const last = text.trim().split("\\n").filter(Boolean).pop() || "Python error";
       const lines = [...text.matchAll(/File "<exec>", line (\\d+)/g)];
+      if (__TEST__ && !__HAS_INPUT__ && /^EOFError/.test(last)) {
+        // A self-test with no example input: the program simply wanted input. Not a bug.
+        console.warn("Needs input to test properly: it stopped at input() because no example input was given.");
+        finish("Stopped: needs input");
+        return;
+      }
       console.error(last + (lines.length ? " (line " + lines[lines.length - 1][1] + ")" : ""));
       finish("Failed with an error");
     }
@@ -217,18 +249,23 @@ export function inputLines(text) {
 }
 
 function pythonDocument(code, selfTest, input) {
+  // The self-test uses the example input the coder wrote (see exampleInput); without one,
+  // running out of input means "needs input", not a bug.
+  const lines = inputLines(input);
   const limit = selfTest ? PY_TEST_LIMIT_MS : PY_LIMIT_MS;
   const policy = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; worker-src blob:; connect-src 'none'; style-src 'unsafe-inline'";
   const fill = {
     __WORKER__: embed(PY_WORKER),
     __SECONDS__: String(limit / 1000),
     __LIMIT__: String(limit),
-    __RUNNING__: embed(selfTest ? "Running (automatic test with sample input)…" : "Running…"),
+    __RUNNING__: embed(selfTest ? (lines.length ? "Running (automatic test with the example input)…" : "Running (automatic test)…") : "Running…"),
+    __TEST__: String(Boolean(selfTest)),
+    __HAS_INPUT__: String(lines.length > 0),
     __CODE__: embed(code),
-    __INPUT__: embed(selfTest ? PYTHON_TEST_INPUT : inputLines(input)),
+    __INPUT__: embed(lines),
   };
   // A function replacer, so "$&" and friends in the user's code stay literal.
-  const script = PY_PAGE.replace(/__[A-Z]+__/g, (key) => fill[key] ?? key);
+  const script = PY_PAGE.replace(/__[A-Z][A-Z_]*__/g, (key) => fill[key] ?? key);
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${policy}">${BRIDGE}<style>
 body { margin: 0; background: #0b0b0b; color: #f2f2f2; font: 14px/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; }
 #status { position: sticky; top: 0; padding: 8px 14px; background: #1a1a1a; color: #bdbdbd; border-bottom: 1px solid #333; }

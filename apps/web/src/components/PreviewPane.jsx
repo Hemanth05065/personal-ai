@@ -4,9 +4,12 @@ import CopyButton from "./CopyButton.jsx";
 
 // What the automatic check is doing, in the user's words.
 const TEST_TEXT = {
+  preparing: "Writing a sample input to test the program with…",
   testing: "Testing: playing it for a few seconds and watching for errors…",
+  testingPython: "Testing: running the program with a sample input…",
   passed: "Check passed: no errors while loading or when keys were pressed.",
-  passedPython: "Check passed: the program ran to the end with sample input and no errors.",
+  passedPython: "Check passed: the program ran to the end with a sample input and no errors.",
+  untested: "Couldn't fully test: the program needs input. Type some in the Input box below and run it.",
   fixing: "Errors found. Asking the coding model to fix them…",
   failed: "Still has errors after the automatic fixes. See the console below.",
 };
@@ -30,9 +33,14 @@ export default function PreviewPane({ preview, testStatus, onTestDone, onClose }
   const python = isPython(preview.lang);
   const [inputText, setInputText] = useState("");
   const [appliedInput, setAppliedInput] = useState("");
-  const source = previewDocument(preview.lang, preview.code, testing, appliedInput);
+  const source = previewDocument(preview.lang, preview.code, testing, testing ? preview.input || "" : appliedInput);
 
-  useEffect(() => { setRun(0); }, [preview]);
+  useEffect(() => {
+    setRun(0);
+    // Start the Input box with the coder's example input, if it gave one.
+    setInputText(preview.input || "");
+    setAppliedInput(preview.input || "");
+  }, [preview]);
   useEffect(() => { logsRef.current = []; setLogs([]); }, [source, run]);
 
   useEffect(() => {
@@ -49,7 +57,8 @@ export default function PreviewPane({ preview, testStatus, onTestDone, onClose }
       if (event.data.done) {
         if (testing) {
           const errors = [...new Set(logsRef.current.filter((item) => item.level === "error").map((item) => item.text))];
-          onTestDone?.(errors.slice(0, 8), preview.code, preview.lang);
+          const untested = logsRef.current.some((item) => item.level === "warn" && item.text.startsWith("Needs input to test properly"));
+          onTestDone?.(errors.slice(0, 8), preview.code, preview.lang, untested);
         }
         return;
       }
@@ -82,7 +91,7 @@ export default function PreviewPane({ preview, testStatus, onTestDone, onClose }
         <button type="button" className="btn btn-sm" onClick={onClose}>Close</button>
       </div>
     </header>
-    {testStatus && <p className={`preview-test test-${testStatus}`} role="status">{TEST_TEXT[python && testStatus === "passed" ? "passedPython" : testStatus]}</p>}
+    {testStatus && <p className={`preview-test test-${testStatus}`} role="status">{TEST_TEXT[python && (testStatus === "passed" || testStatus === "testing") ? `${testStatus}Python` : testStatus]}</p>}
     <iframe key={`${run}-${source.length}`} ref={frameRef} className="preview-frame" title="Output of the code" srcDoc={source}
       sandbox={testing ? "allow-scripts" : "allow-scripts allow-modals allow-pointer-lock"} referrerPolicy="no-referrer"
       onLoad={() => frameRef.current?.focus()} />

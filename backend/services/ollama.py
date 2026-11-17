@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
@@ -37,6 +38,7 @@ class OllamaClient:
         *,
         model: str | None = None,
         context_tokens: int | None = None,
+        read_timeout: float = 120,
     ):
         self.settings = settings
         # Tests pass an httpx.MockTransport; normal use talks to the real Ollama.
@@ -44,6 +46,9 @@ class OllamaClient:
         # A routed request (services/routing.py) can pick another model and window.
         self.model = model or settings.model
         self.context_tokens = context_tokens or settings.context_tokens
+        # Longest wait for the next piece of a streamed reply. A big model that is half on
+        # the CPU can take minutes to load and read a long prompt before its first word.
+        self.read_timeout = read_timeout
 
     def _payload(
         self,
@@ -73,7 +78,9 @@ class OllamaClient:
     async def chat(self, messages: list[dict[str, str]], memories: list[str]) -> str:
         payload = self._payload(messages, memories, stream=False)
         try:
-            async with httpx.AsyncClient(timeout=120, transport=self.transport, verify=tls_context()) as client:
+            async with httpx.AsyncClient(
+                timeout=120, transport=self.transport, verify=tls_context()
+            ) as client:
                 response = await client.post(f"{self.settings.ollama_url}/api/chat", json=payload)
                 response.raise_for_status()
         except (httpx.HTTPError, OSError) as exc:
@@ -91,14 +98,19 @@ class OllamaClient:
 
         Ollama streams one NDJSON object per chunk; tool calls arrive whole in one chunk.
         """
-        payload = self._payload(messages, memories, stream=True, tools=tools, system_extra=system_extra)
-        # No read timeout between chunks would hang forever on a stalled model;
-        # 120 s per chunk matches the non-streaming limit for the whole reply.
-        timeout = httpx.Timeout(connect=5, read=120, write=30, pool=5)
+        payload = self._payload(
+            messages, memories, stream=True, tools=tools, system_extra=system_extra
+        )
+        # No read timeout between chunks would hang forever on a stalled model.
+        timeout = httpx.Timeout(connect=5, read=self.read_timeout, write=30, pool=5)
         try:
             async with (
-                httpx.AsyncClient(timeout=timeout, transport=self.transport, verify=tls_context()) as client,
-                client.stream("POST", f"{self.settings.ollama_url}/api/chat", json=payload) as response,
+                httpx.AsyncClient(
+                    timeout=timeout, transport=self.transport, verify=tls_context()
+                ) as client,
+                client.stream(
+                    "POST", f"{self.settings.ollama_url}/api/chat", json=payload
+                ) as response,
             ):
                 response.raise_for_status()
                 async for line in response.aiter_lines():
@@ -119,8 +131,33 @@ class OllamaClient:
                                 arguments = json.loads(arguments)
                             except json.JSONDecodeError:
                                 arguments = {"_unparsed": arguments}
-                        yield ToolRequest(str(function.get("name", "")), arguments if isinstance(arguments, dict) else {})
+                        yield ToolRequest(
+                            str(function.get("name", "")),
+                            arguments if isinstance(arguments, dict) else {},
+                        )
                     if chunk.get("done"):
                         return
         except (httpx.HTTPError, OSError, json.JSONDecodeError) as exc:
             raise OllamaUnavailable(UNAVAILABLE) from exc
+
+
+_installed: tuple[float, set[str]] = (0.0, set())
+
+
+async def model_installed(settings: Settings, name: str) -> bool:
+    """Whether Ollama has this model. Checked at most once a minute.
+
+    If Ollama can't be asked, say yes: the chat call reports the real problem.
+    """
+    global _installed
+    checked_at, names = _installed
+    if time.monotonic() - checked_at > 60:
+        try:
+            async with httpx.AsyncClient(timeout=5, verify=tls_context()) as client:
+                response = await client.get(f"{settings.ollama_url}/api/tags")
+                response.raise_for_status()
+            names = {item.get("name", "") for item in response.json().get("models", [])}
+            _installed = (time.monotonic(), names)
+        except (httpx.HTTPError, OSError, ValueError):
+            return True
+    return name in names or f"{name}:latest" in names

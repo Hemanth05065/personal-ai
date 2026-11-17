@@ -3,10 +3,10 @@ import { request } from "../api.js";
 import Markdown from "../components/Markdown.jsx";
 import ToolCard from "../components/ToolCard.jsx";
 import PreviewPane from "../components/PreviewPane.jsx";
-import { bestRunnable, fixRequest } from "../preview.js";
+import { bestRunnable, exampleInput, fixRequest, isPython } from "../preview.js";
 
 const WHO = { user: "You", assistant: "Assistant", error: "Problem" };
-const MAX_FIXES = 2;
+const MAX_FIXES = 3;
 
 function parseTool(content) {
   try { return JSON.parse(content); } catch { return null; }
@@ -30,12 +30,13 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
   }
   // Code preview beside the chat: { lang, code, title, test }.
   const [preview, setPreview] = useState(null);
-  const [testStatus, setTestStatus] = useState(null); // testing | passed | fixing | failed
+  const [testStatus, setTestStatus] = useState(null); // preparing | testing | passed | untested | fixing | failed
   const openPreview = (lang, code, title = "Code from the chat") => { setTestStatus(null); setPreview({ lang, code, title }); };
   // Self-check loop: a coding reply is run and played automatically; errors go back to the
   // coder as a visible message, at most MAX_FIXES times per request you send.
   const fixAttempts = useRef(0);
   const autoOpened = useRef(null);
+  const latestJob = useRef(null);
   useEffect(() => {
     // Only live replies carry `coding`, so reopening an old conversation doesn't start a test.
     const last = messages[messages.length - 1];
@@ -43,11 +44,30 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
     autoOpened.current = last;
     const block = bestRunnable(last.content);
     if (!block) return;
-    setTestStatus("testing");
-    setPreview({ ...block, test: true, title: fixAttempts.current ? `Fixed version (attempt ${fixAttempts.current})` : "Latest coding reply" });
-  }, [messages]);
-  const onTestDone = useCallback((errors, code, lang) => {
-    if (!errors.length) { setTestStatus("passed"); return; }
+    const title = fixAttempts.current ? `Fixed version (attempt ${fixAttempts.current})` : "Latest coding reply";
+    const given = exampleInput(last.content);
+    // Only the newest reply's test may open the panel (no effect cleanup: StrictMode's
+    // second run would cancel the first and, seeing autoOpened, never start another).
+    const job = {};
+    latestJob.current = job;
+    (async () => {
+      let input = given;
+      // A Python program that reads input can only be tested with input in its own format.
+      // The coders rarely write an example, so ask the fast coder for one.
+      if (!input && isPython(block.lang) && /\binput\s*\(/.test(block.code)) {
+        setTestStatus("preparing");
+        notify("Writing a sample input so the program can be tested…");
+        try {
+          input = (await request("/chat/example-input", { method: "POST", body: JSON.stringify({ code: block.code }) })).input;
+        } catch { /* test without input; it reports "needs input" */ }
+      }
+      if (latestJob.current !== job) return;
+      setTestStatus("testing");
+      setPreview({ ...block, test: true, input, title });
+    })();
+  }, [messages, notify]);
+  const onTestDone = useCallback((errors, code, lang, untested = false) => {
+    if (!errors.length) { setTestStatus(untested ? "untested" : "passed"); return; }
     if (fixAttempts.current >= MAX_FIXES) { setTestStatus("failed"); return; }
     fixAttempts.current += 1;
     setTestStatus("fixing");
@@ -135,7 +155,7 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
           }
           const tools = message.tools || [];
           return <article className={`msg msg-${message.role}`} key={key}>
-            <p className="msg-who">{WHO[message.role] || message.role}{message.coding && <span className="msg-tag">Coding model</span>}</p>
+            <p className="msg-who">{WHO[message.role] || message.role}{message.coding && <span className="msg-tag">{message.big ? "Big coding model (slower, more careful)" : "Coding model"}</span>}</p>
             {tools.map(card)}
             {message.role === "assistant"
               ? (message.streaming && !message.content

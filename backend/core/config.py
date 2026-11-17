@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # cut long answers off; whole programs need the bigger coding window.
     context_tokens: int = 8192
     coder_context_tokens: int = 16384
+    # "Build me a game/app" requests and auto-fix rounds use a bigger, slower coder that
+    # makes fewer mistakes. Empty string turns it off (the coder_model is used instead).
+    big_coder_model: str = "qwen2.5-coder:14b"
+    big_coder_context_tokens: int = 16384
     # Local Ollama model that turns text into vectors for file search.
     embedding_model: str = "nomic-embed-text"
     allowed_origins: str = "http://localhost:5173"
