@@ -1,0 +1,1973 @@
+{
+ "started": "20261118T055728Z",
+ "models": {
+  "app_chat": "qwen3.5:4b",
+  "app_coder": "qwen2.5-coder:7b",
+  "app_big_coder": "qwen2.5-coder:14b",
+  "modes": [
+   "qwen2.5-coder:7b"
+  ]
+ },
+ "runs_per_task": 3,
+ "max_fixes": 3,
+ "machine": {
+  "system": "Windows",
+  "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+ },
+ "runs": [
+  {
+   "task": "expression",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 14.2,
+     "tokens": 247,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "The program caught a Python error and printed it instead of working: Enter an arithmetic expression: Error: module 'ast' has no attribute 'Num'"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 18.8,
+     "tokens": 281,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "NameError: name 'ast' is not defined. Did you forget to import 'ast'? (line 5)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 2,
+     "model": "qwen2.5-coder:7b",
+     "secs": 19.6,
+     "tokens": 284,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "10/4",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": true,
+     "why": "last number 7, wanted 7"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": true,
+     "why": "last number -10, wanted -10"
+    },
+    {
+     "stdin": "10/4",
+     "passed": true,
+     "why": "last number 2.5, wanted 2.5"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": true,
+     "why": "last number 11, wanted 11"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 52.6,
+   "run": 1
+  },
+  {
+   "task": "expression",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 15.6,
+     "tokens": 225,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "10/4",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "10/4",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": false,
+     "why": "AttributeError: module 'ast' has no attribute 'Num' (line 14)"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 15.6,
+   "run": 2
+  },
+  {
+   "task": "expression",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 17.8,
+     "tokens": 240,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "The program caught a Python error and printed it instead of working: Error: module 'ast' has no attribute 'Num'"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 19.2,
+     "tokens": 257,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "10/4",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": true,
+     "why": "last number 7, wanted 7"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": true,
+     "why": "last number -10, wanted -10"
+    },
+    {
+     "stdin": "10/4",
+     "passed": true,
+     "why": "last number 2.5, wanted 2.5"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": true,
+     "why": "last number 11, wanted 11"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 37.0,
+   "run": 3
+  },
+  {
+   "task": "sudoku",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 42.1,
+     "tokens": 659,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 4)"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 4)"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 4)"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 4)"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 42.1,
+   "run": 1
+  },
+  {
+   "task": "sudoku",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 42.4,
+     "tokens": 657,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [
+      "SyntaxError: invalid syntax (line 37)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 47.0,
+     "tokens": 657,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [
+      "SyntaxError: invalid syntax (line 37)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 2,
+     "model": "qwen2.5-coder:7b",
+     "secs": 54.2,
+     "tokens": 657,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [
+      "SyntaxError: invalid syntax (line 37)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 3,
+     "model": "qwen2.5-coder:7b",
+     "secs": 57.5,
+     "tokens": 657,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [
+      "SyntaxError: invalid syntax (line 37)"
+     ],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "SyntaxError: invalid syntax (line 37)"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "SyntaxError: invalid syntax (line 37)"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "SyntaxError: invalid syntax (line 37)"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "SyntaxError: invalid syntax (line 37)"
+    }
+   ],
+   "self_test_passed": false,
+   "secs": 201.1,
+   "run": 2
+  },
+  {
+   "task": "sudoku",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 30.6,
+     "tokens": 436,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 13)"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 13)"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 13)"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "IndexError: list index out of range (line 13)"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 30.6,
+   "run": 3
+  },
+  {
+   "task": "roman",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 16.1,
+     "tokens": 221,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "ValueError: invalid literal for int() with base 10: 'Enter a number between 1 and 3999: 2023' (line 24)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 17.6,
+     "tokens": 271,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 33.7,
+   "run": 1
+  },
+  {
+   "task": "roman",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 24.5,
+     "tokens": 358,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 24.5,
+   "run": 2
+  },
+  {
+   "task": "roman",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 23.8,
+     "tokens": 347,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 23.8,
+   "run": 3
+  },
+  {
+   "task": "brackets",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 10.1,
+     "tokens": 144,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 10.1,
+   "run": 1
+  },
+  {
+   "task": "brackets",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 6.3,
+     "tokens": 110,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 6.3,
+   "run": 2
+  },
+  {
+   "task": "brackets",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 13.2,
+     "tokens": 208,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 13.2,
+   "run": 3
+  },
+  {
+   "task": "word_frequency",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 11.7,
+     "tokens": 170,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 11.7,
+   "run": 1
+  },
+  {
+   "task": "word_frequency",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 12.0,
+     "tokens": 176,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 12.0,
+   "run": 2
+  },
+  {
+   "task": "word_frequency",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 10.5,
+     "tokens": 162,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 10.5,
+   "run": 3
+  },
+  {
+   "task": "grid_path",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 29.1,
+     "tokens": 440,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end."
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 31.2,
+     "tokens": 440,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end."
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 2,
+     "model": "qwen2.5-coder:7b",
+     "secs": 31.6,
+     "tokens": 440,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end."
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 3,
+     "model": "qwen2.5-coder:7b",
+     "secs": 33.4,
+     "tokens": 440,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end."
+     ],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": false,
+     "why": "printed no number"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": false,
+     "why": "printed no number"
+    }
+   ],
+   "self_test_passed": false,
+   "secs": 125.3,
+   "run": 1
+  },
+  {
+   "task": "grid_path",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 31.8,
+     "tokens": 482,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 31.8,
+   "run": 2
+  },
+  {
+   "task": "grid_path",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 22.1,
+     "tokens": 355,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": false,
+     "why": "last number 5, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": false,
+     "why": "last number 5, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": false,
+     "why": "last number 5, wanted 3"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": false,
+     "why": "last number 5, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": false,
+     "why": "last number 5, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": false,
+     "why": "last number 5, wanted 3"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 22.1,
+   "run": 3
+  },
+  {
+   "task": "date_difference",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 11.8,
+     "tokens": 179,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 11.8,
+   "run": 1
+  },
+  {
+   "task": "date_difference",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 14.4,
+     "tokens": 229,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "ValueError: time data 'Enter the first date (YYYY-MM-DD): 2022-01-01' does not match format '%Y-%m-%d' (line 9)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 16.9,
+     "tokens": 260,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "EOFError: EOF when reading a line (line 6)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 2,
+     "model": "qwen2.5-coder:7b",
+     "secs": 18.6,
+     "tokens": 278,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "EOFError: EOF when reading a line (line 6)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 3,
+     "model": "qwen2.5-coder:7b",
+     "secs": 19.2,
+     "tokens": 278,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 69.1,
+   "run": 2
+  },
+  {
+   "task": "date_difference",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 12.2,
+     "tokens": 177,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "ValueError: time data 'Enter the first date (YYYY-MM-DD): 2022-01-01' does not match format '%Y-%m-%d' (line 5)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 13.4,
+     "tokens": 197,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 25.6,
+   "run": 3
+  },
+  {
+   "task": "prime_factors",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 23.6,
+     "tokens": 360,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 23.6,
+   "run": 1
+  },
+  {
+   "task": "prime_factors",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 19.3,
+     "tokens": 267,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [
+      "ValueError: invalid literal for int() with base 10: 'Enter a whole number greater than 1: 60' (line 29)"
+     ],
+     "needs_input": false
+    },
+    {
+     "attempt": 1,
+     "model": "qwen2.5-coder:7b",
+     "secs": 23.6,
+     "tokens": 325,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 42.9,
+   "run": 2
+  },
+  {
+   "task": "prime_factors",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 20.1,
+     "tokens": 290,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 20.1,
+   "run": 3
+  },
+  {
+   "task": "spiral",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 24.0,
+     "tokens": 374,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 24.0,
+   "run": 1
+  },
+  {
+   "task": "spiral",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 17.8,
+     "tokens": 288,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 17.8,
+   "run": 2
+  },
+  {
+   "task": "spiral",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 33.0,
+     "tokens": 501,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": false,
+     "why": "ended with ['15', '14', '13', '9', '5', '6', '7', '11', '10']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": false,
+     "why": "ended with ['6', '7', '11', '10']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": false,
+     "why": "ended with ['10']"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": false,
+     "why": "ended with ['15', '14', '13', '9', '5', '6', '7', '11', '10']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": false,
+     "why": "ended with ['6', '7', '11', '10']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": false,
+     "why": "ended with ['10']"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 33.0,
+   "run": 3
+  },
+  {
+   "task": "run_length",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 10.1,
+     "tokens": 147,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 10.1,
+   "run": 1
+  },
+  {
+   "task": "run_length",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 8.5,
+     "tokens": 117,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 8.5,
+   "run": 2
+  },
+  {
+   "task": "run_length",
+   "mode": "qwen2.5-coder:7b",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:7b",
+     "secs": 7.8,
+     "tokens": 134,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 7.8,
+   "run": 3
+  }
+ ]
+}

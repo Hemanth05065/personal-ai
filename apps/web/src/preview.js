@@ -186,19 +186,15 @@ function feed(kind, text) {
   parts.forEach(log[kind]);
 }
 function flush() { for (const kind of Object.keys(pending)) { if (pending[kind]) log[kind](pending[kind]); pending[kind] = ""; } }
-// A program that catches its own crash and prints it still has the bug. Python's own wording
-// for these mistakes is distinctive, so the self-test treats printed copies as errors too.
-const SWALLOWED = /has no attribute '|is not defined|unsupported operand type|object is not (subscriptable|callable|iterable)|takes \\d+ positional arguments? but|Traceback \\(most recent call last\\)|maximum recursion depth|can only concatenate|list index out of range/;
+// The self-test rules are the exported functions further down, embedded here so the app and
+// the evaluation harness (eval/runner.mjs) judge a run the same way.
+const SWALLOWED = __SWALLOWED__;
+const NEEDS_INPUT = __NEEDS_INPUT__;
+__FINDINGS_FN__
+__SUMMARY_FN__
 function reportSwallowed() {
   if (!__TEST__) return;
-  // Ran without errors but did nothing visible: usually functions that are never called.
-  if (!printed && !readInput) {
-    console.error("The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end.");
-  }
-  const seen = new Set();
-  for (const line of out.textContent.split("\\n")) {
-    if (SWALLOWED.test(line) && !seen.has(line)) { seen.add(line); console.error("The program caught a Python error and printed it instead of working: " + line.trim().slice(0, 200)); }
-  }
+  for (const message of selfTestFindings(out.textContent, printed, readInput)) console.error(message);
 }
 let finished = false;
 let worker = null;
@@ -224,15 +220,14 @@ function start(files) {
       // The traceback from the user's own code down, without Pyodide's internal frames.
       const begin = text.search(/File "<exec>"/);
       add(begin >= 0 ? "Traceback (most recent call last):\\n  " + text.slice(begin).trim() : text.trim(), "err");
-      const last = text.trim().split("\\n").filter(Boolean).pop() || "Python error";
-      const lines = [...text.matchAll(/File "<exec>", line (\\d+)/g)];
-      if (__TEST__ && !__HAS_INPUT__ && /^EOFError/.test(last)) {
+      const summary = summarizePythonFailure(text);
+      if (__TEST__ && !__HAS_INPUT__ && /^EOFError/.test(summary)) {
         // A self-test with no example input: the program simply wanted input. Not a bug.
-        console.warn("Needs input to test properly: it stopped at input() because no example input was given.");
+        console.warn(NEEDS_INPUT);
         finish("Stopped: needs input");
         return;
       }
-      console.error(last + (lines.length ? " (line " + lines[lines.length - 1][1] + ")" : ""));
+      console.error(summary);
       finish("Failed with an error");
     }
   };
@@ -246,6 +241,38 @@ window.addEventListener("message", (event) => {
 });
 parent.postMessage({ __preview: true, needPyodide: true }, "*");
 `;
+
+// ---------- Self-test rules (shared with the evaluation harness, eval/runner.mjs) ----------
+
+// A program that catches its own crash and prints it still has the bug. Python's own wording
+// for these mistakes is distinctive, so the self-test treats printed copies as errors too.
+export const SWALLOWED = /has no attribute '|is not defined|unsupported operand type|object is not (subscriptable|callable|iterable)|takes \d+ positional arguments? but|Traceback \(most recent call last\)|maximum recursion depth|can only concatenate|list index out of range/;
+
+export const NEEDS_INPUT = "Needs input to test properly: it stopped at input() because no example input was given.";
+
+/** Errors the self-test reports for a Python run that finished without raising. */
+export function selfTestFindings(output, printed, readInput) {
+  const errors = [];
+  // Ran without errors but did nothing visible: usually functions that are never called.
+  if (!printed && !readInput) {
+    errors.push("The program finished without printing anything or reading any input. Make sure the code that reads the input and prints the result actually runs, for example by calling main() at the end.");
+  }
+  const seen = new Set();
+  for (const line of String(output).split("\n")) {
+    if (SWALLOWED.test(line) && !seen.has(line)) {
+      seen.add(line);
+      errors.push("The program caught a Python error and printed it instead of working: " + line.trim().slice(0, 200));
+    }
+  }
+  return errors;
+}
+
+/** One line for a Python failure: the exception, and its line in the user's code. */
+export function summarizePythonFailure(text) {
+  const last = String(text).trim().split("\n").filter(Boolean).pop() || "Python error";
+  const lines = [...String(text).matchAll(/File "<exec>", line (\d+)/g)];
+  return last + (lines.length ? " (line " + lines[lines.length - 1][1] + ")" : "");
+}
 
 // Keeps "</script>" inside a string from closing the page's script tag.
 const embed = (value) => JSON.stringify(value).replace(/</g, "\\u003c");
@@ -272,6 +299,10 @@ function pythonDocument(code, selfTest, input) {
     __HAS_INPUT__: String(lines.length > 0),
     __CODE__: embed(code),
     __INPUT__: embed(lines),
+    __SWALLOWED__: SWALLOWED.toString(),
+    __NEEDS_INPUT__: embed(NEEDS_INPUT),
+    __FINDINGS_FN__: selfTestFindings.toString(),
+    __SUMMARY_FN__: summarizePythonFailure.toString(),
   };
   // A function replacer, so "$&" and friends in the user's code stay literal.
   const script = PY_PAGE.replace(/__[A-Z][A-Z_]*__/g, (key) => fill[key] ?? key);

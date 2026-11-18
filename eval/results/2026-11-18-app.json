@@ -1,0 +1,1789 @@
+{
+ "started": "20261118T062203Z",
+ "models": {
+  "app_chat": "qwen3.5:4b",
+  "app_coder": "qwen2.5-coder:7b",
+  "app_big_coder": "qwen2.5-coder:14b",
+  "modes": [
+   "app"
+  ]
+ },
+ "runs_per_task": 3,
+ "max_fixes": 3,
+ "machine": {
+  "system": "Windows",
+  "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD"
+ },
+ "runs": [
+  {
+   "task": "expression",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 99.6,
+     "tokens": 318,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": true,
+     "why": "last number 7, wanted 7"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": true,
+     "why": "last number -10, wanted -10"
+    },
+    {
+     "stdin": "10/4",
+     "passed": true,
+     "why": "last number 2.5, wanted 2.5"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": true,
+     "why": "last number 11, wanted 11"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": true,
+     "why": "last number 7, wanted 7"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": true,
+     "why": "last number -10, wanted -10"
+    },
+    {
+     "stdin": "10/4",
+     "passed": true,
+     "why": "last number 2.5, wanted 2.5"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": true,
+     "why": "last number 11, wanted 11"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 99.6,
+   "run": 1
+  },
+  {
+   "task": "expression",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 77.6,
+     "tokens": 293,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": true,
+     "why": "last number 7, wanted 7"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": true,
+     "why": "last number -10, wanted -10"
+    },
+    {
+     "stdin": "10/4",
+     "passed": true,
+     "why": "last number 2.5, wanted 2.5"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": true,
+     "why": "last number 11, wanted 11"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": true,
+     "why": "last number 7, wanted 7"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": true,
+     "why": "last number -10, wanted -10"
+    },
+    {
+     "stdin": "10/4",
+     "passed": true,
+     "why": "last number 2.5, wanted 2.5"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": true,
+     "why": "last number 11, wanted 11"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 77.6,
+   "run": 2
+  },
+  {
+   "task": "expression",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 75.7,
+     "tokens": 276,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "10/4",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3 + 4 * (2 - 1)",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "-(2+3)*2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "10/4",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "1 - -1",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2 + 3 * 4 - 6 / 2",
+     "passed": false,
+     "why": "printed no number"
+    },
+    {
+     "stdin": "2*(3+",
+     "passed": true,
+     "why": "found 'error'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 75.7,
+   "run": 3
+  },
+  {
+   "task": "sudoku",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 137.3,
+     "tokens": 489,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "grid matches"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "found 'no solution'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "grid matches"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "found 'no solution'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 137.3,
+   "run": 1
+  },
+  {
+   "task": "sudoku",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 106.8,
+     "tokens": 386,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "grid matches"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "missing 'no solution'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "grid matches"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "missing 'no solution'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 106.8,
+   "run": 2
+  },
+  {
+   "task": "sudoku",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 163.1,
+     "tokens": 599,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "grid matches"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "missing 'no solution'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "530070000\n600195000\n098000060\n800060003\n",
+     "passed": true,
+     "why": "grid matches"
+    },
+    {
+     "stdin": "553070000\n600195000\n098000060\n800060003\n",
+     "passed": false,
+     "why": "missing 'no solution'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 163.1,
+   "run": 3
+  },
+  {
+   "task": "roman",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 74.7,
+     "tokens": 288,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 74.7,
+   "run": 1
+  },
+  {
+   "task": "roman",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 86.3,
+     "tokens": 331,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 86.3,
+   "run": 2
+  },
+  {
+   "task": "roman",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 67.5,
+     "tokens": 256,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "1994",
+     "passed": true,
+     "why": "found 'MCMXCIV'"
+    },
+    {
+     "stdin": "4",
+     "passed": true,
+     "why": "found 'IV'"
+    },
+    {
+     "stdin": "3999",
+     "passed": true,
+     "why": "found 'MMMCMXCIX'"
+    },
+    {
+     "stdin": "58",
+     "passed": true,
+     "why": "found 'LVIII'"
+    },
+    {
+     "stdin": "9",
+     "passed": true,
+     "why": "found 'IX'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 67.5,
+   "run": 3
+  },
+  {
+   "task": "brackets",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 33.3,
+     "tokens": 126,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 33.3,
+   "run": 1
+  },
+  {
+   "task": "brackets",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 30.2,
+     "tokens": 124,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 30.2,
+   "run": 2
+  },
+  {
+   "task": "brackets",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 27.2,
+     "tokens": 110,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "([]{})",
+     "passed": true,
+     "why": "found 'balanced'"
+    },
+    {
+     "stdin": "([)]",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "((",
+     "passed": true,
+     "why": "found 'not balanced'"
+    },
+    {
+     "stdin": "a(b)c",
+     "passed": true,
+     "why": "found 'balanced'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 27.2,
+   "run": 3
+  },
+  {
+   "task": "word_frequency",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 41.3,
+     "tokens": 160,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": false,
+   "final": false,
+   "first_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": false,
+     "why": "missing 'the 3' (in order)"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": false,
+     "why": "missing 'hello 2' (in order)"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": false,
+     "why": "missing 'the 3' (in order)"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": false,
+     "why": "missing 'hello 2' (in order)"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 41.3,
+   "run": 1
+  },
+  {
+   "task": "word_frequency",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 35.0,
+     "tokens": 136,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 35.0,
+   "run": 2
+  },
+  {
+   "task": "word_frequency",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 49.1,
+     "tokens": 188,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "The cat and the dog. The cat ran!",
+     "passed": true,
+     "why": "all items in order"
+    },
+    {
+     "stdin": "Hello, hello WORLD! world? Zebra",
+     "passed": true,
+     "why": "all items in order"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 49.1,
+   "run": 3
+  },
+  {
+   "task": "grid_path",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 88.0,
+     "tokens": 339,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 88.0,
+   "run": 1
+  },
+  {
+   "task": "grid_path",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 94.1,
+     "tokens": 354,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 94.1,
+   "run": 2
+  },
+  {
+   "task": "grid_path",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 87.3,
+     "tokens": 336,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\nS.#\n.##\n..E",
+     "passed": true,
+     "why": "last number 4, wanted 4"
+    },
+    {
+     "stdin": "2\nS#\n#E",
+     "passed": true,
+     "why": "last number -1, wanted -1"
+    },
+    {
+     "stdin": "1\nS..E",
+     "passed": true,
+     "why": "last number 3, wanted 3"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 87.3,
+   "run": 3
+  },
+  {
+   "task": "date_difference",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 36.4,
+     "tokens": 140,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 36.4,
+   "run": 1
+  },
+  {
+   "task": "date_difference",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 41.1,
+     "tokens": 162,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 41.1,
+   "run": 2
+  },
+  {
+   "task": "date_difference",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 39.0,
+     "tokens": 154,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "2024-01-01\n2024-03-01",
+     "passed": true,
+     "why": "last number 60, wanted 60"
+    },
+    {
+     "stdin": "2023-12-25\n2023-12-24",
+     "passed": true,
+     "why": "last number 1, wanted 1"
+    },
+    {
+     "stdin": "2000-02-28\n2000-03-01",
+     "passed": true,
+     "why": "last number 2, wanted 2"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 39.0,
+   "run": 3
+  },
+  {
+   "task": "prime_factors",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 53.9,
+     "tokens": 212,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 53.9,
+   "run": 1
+  },
+  {
+   "task": "prime_factors",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 59.6,
+     "tokens": 230,
+     "via_tool": false,
+     "example_written": true,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 59.6,
+   "run": 2
+  },
+  {
+   "task": "prime_factors",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 83.4,
+     "tokens": 315,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "360",
+     "passed": true,
+     "why": "found '2^3 * 3^2 * 5'"
+    },
+    {
+     "stdin": "97",
+     "passed": true,
+     "why": "found '97'"
+    },
+    {
+     "stdin": "1024",
+     "passed": true,
+     "why": "found '2^10'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 83.4,
+   "run": 3
+  },
+  {
+   "task": "spiral",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 63.0,
+     "tokens": 245,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 63.0,
+   "run": 1
+  },
+  {
+   "task": "spiral",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 89.7,
+     "tokens": 336,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 89.7,
+   "run": 2
+  },
+  {
+   "task": "spiral",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 32.0,
+     "tokens": 121,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "3\n1 2 3\n4 5 6\n7 8 9",
+     "passed": true,
+     "why": "ended with ['1', '2', '3', '6', '9', '8', '7', '4', '5']"
+    },
+    {
+     "stdin": "2\n1 2\n3 4",
+     "passed": true,
+     "why": "ended with ['1', '2', '4', '3']"
+    },
+    {
+     "stdin": "1\n5",
+     "passed": true,
+     "why": "ended with ['5']"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 32.0,
+   "run": 3
+  },
+  {
+   "task": "run_length",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 41.3,
+     "tokens": 154,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 41.3,
+   "run": 1
+  },
+  {
+   "task": "run_length",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 46.2,
+     "tokens": 177,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 46.2,
+   "run": 2
+  },
+  {
+   "task": "run_length",
+   "mode": "app",
+   "rounds": [
+    {
+     "attempt": 0,
+     "model": "qwen2.5-coder:14b",
+     "secs": 51.1,
+     "tokens": 191,
+     "via_tool": false,
+     "example_written": false,
+     "errors": [],
+     "needs_input": false
+    }
+   ],
+   "first_try": true,
+   "final": true,
+   "first_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "final_checks": [
+    {
+     "stdin": "aaabccdddd",
+     "passed": true,
+     "why": "found 'a3b1c2d4'"
+    },
+    {
+     "stdin": "x",
+     "passed": true,
+     "why": "found 'x1'"
+    },
+    {
+     "stdin": "zzzzzzzzzzzz",
+     "passed": true,
+     "why": "found 'z12'"
+    }
+   ],
+   "self_test_passed": true,
+   "secs": 51.1,
+   "run": 3
+  }
+ ]
+}

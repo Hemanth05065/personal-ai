@@ -23,3 +23,6 @@ security/promptfoo/.promptfoo/
 
 # Throwaway data for recording demos.
 .demo/
+
+# Throwaway database and workspaces of eval/agent_eval.py.
+eval/.work/

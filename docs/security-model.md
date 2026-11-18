@@ -28,7 +28,12 @@ localhost, and session cookies aren't marked `Secure` by default.
   - an exact, expiring, single-use approval bound to that action's
     fingerprint.
 
-  Outcomes shown in chat are written by the server, not the model.
+  Outcomes shown in chat are written by the server, not the model. The model's own
+  words can still claim an action: the evaluation caught "I have saved these notes"
+  with no tool call, obeying a planted note. When a reply claims a save or write and
+  no write ran that turn, the server adds a correction after it. This is a phrase
+  match (`WRITE_CLAIM` in `backend/services/agent.py`), so an unusual wording can
+  slip past it. The file itself is never at risk: only the text is wrong.
 - **Roles.**
   - Viewers are read-only: one middleware rule rejects every write except
     signing out (`backend/main.py`). A test walks the whole API, so a new

@@ -22,9 +22,10 @@ jobs:
       - name: Install
         run: pip install -e ".[dev]"
       - name: Lint
-        run: ruff check backend tests
+        run: ruff check backend tests eval
       - name: Test
         # Tests use an in-memory database and mock Ollama: no models or services needed.
+        # Includes the evaluation harness's checks and its reference solutions.
         run: pytest -q
 
   web:
@@ -37,10 +38,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # 24: the version the runner's permission sandbox was tested with.
+          node-version: "24"
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - name: Install
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Evaluation runner (Pyodide sandbox)
+        # The harness's code runner: same self-test rules as the Output panel, and Node's
+        # permission model blocks processes and reads outside the repository.
+        working-directory: .
+        run: node --test eval/runner.test.mjs

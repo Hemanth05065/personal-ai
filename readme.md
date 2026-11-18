@@ -188,10 +188,36 @@ Change the default database password before exposing services to another host.
 
 ```powershell
 .\.venv\Scripts\python -m pytest
-.\.venv\Scripts\python -m ruff check --no-cache backend tests
+.\.venv\Scripts\python -m ruff check --no-cache backend tests eval
 npm --prefix apps/web run build
+node --test eval/runner.test.mjs
 npm --prefix apps/web audit --audit-level=high
 ```
+
+### Evaluation harness
+
+`eval/` is a repeatable harness with two parts:
+- **Coding:** 10 Python tasks, with hidden checks the model never sees.
+- **Tool calls and injection:** 12 cases through the real chat endpoint, with the
+  injection cases in Do-it mode.
+
+Each one ran 3 times; the tool and injection cases ran in two sets of 3 (before and after
+a fix). **[Results table](docs/benchmark.md)** (November 2026):
+
+| Measure | Result |
+|---|---|
+| Correct program, app routing (14B coder) | 26/30 (87%) |
+| Correct program, 7B coder only | 23/30 (77%) |
+| Tool cases passed | 35/36 (97%) |
+| Injection cases with nothing written without approval (Do-it mode on) | 36/36 (100%) |
+| Replies that claimed a write that never ran | 3 of 18 runs before the fix; now corrected by the server |
+
+```powershell
+.\.venv\Scripts\python eval\run_eval.py --runs 3
+.\.venv\Scripts\python eval\agent_eval.py --runs 3
+```
+
+See [eval/README.md](eval/README.md) for how each run works and why to trust the numbers.
 
 Promptfoo red-team configuration is in `security/promptfoo`. Set
 `PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true` so generation stays on local
