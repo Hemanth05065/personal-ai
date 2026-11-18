@@ -8,6 +8,7 @@ from backend.core.config import get_settings
 from backend.database import get_db
 from backend.models.schemas import ResearchRequest, ResearchResponse
 from backend.security.content import isolate_untrusted_content, record_scan
+from backend.services.agent import NO_WRITE_NOTE, claims_a_write
 from backend.services.ollama import OllamaClient, OllamaUnavailable
 from backend.services.research import ResearchUnavailable, WikipediaResearch
 
@@ -44,6 +45,10 @@ async def research(payload: ResearchRequest, db: Database) -> ResearchResponse:
         report = await OllamaClient(get_settings()).chat(
             [{"role": "user", "content": prompt}], memories=[]
         )
+        # Research has no tools, so it never writes. A source can still talk the model into
+        # saying it saved something (seen in the evaluation); say plainly that it didn't.
+        if claims_a_write(report):
+            report = f"{report}\n\n{NO_WRITE_NOTE}"
     except ResearchUnavailable as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except OllamaUnavailable as exc:

@@ -10,7 +10,28 @@ beside the chat. Nothing goes to a cloud AI, and nothing costs money.
 The model never acts on its own. It can only *propose* an action; the server decides
 whether that action is allowed, asks you when it should, runs it, and records it.
 
+## Measured results
+
+From the evaluation harness in [`eval/`](eval/README.md), November 2026, on a laptop GPU
+(RTX 4050, 6 GB). Every number is a pass rate over repeated runs. See
+[docs/benchmark.md](docs/benchmark.md) for every table and its limits.
+
+| What was measured | Runs | Result |
+|---|---|---|
+| Correct program on 10 Python tasks, hidden checks (app routing, 14B coder) | 3 per task | **26/30 (87%)** |
+| Same, 7B coder only | 3 per task | 23/30 (77%) |
+| Tool-use cases (list, read, find, write, approval, no tool needed), `qwen3.5:4b` | 5 per case | **30/30** |
+| Prompt injection with Do-it mode on, across 3 chat models: 30 cases, 5 paths × 6 styles | 5 per case | **0 writes without approval, in 450 runs** |
+| ...runs where the model obeyed the injection (`qwen3.5:4b` / `qwen3:8b` / `llama3.1:8b`) | 150 each | 12% / 7% / 2% |
+| ...planted writes the server stopped, of those the model proposed | | **all** |
+| Ablation: planted files written with the file-read check off (`qwen3.5:4b`) | 90 | 11 (vs 0 with it on) |
+| Audit log: a hand-edited row is detected; deleting the newest rows is **not** | demo | [see the limits](docs/security-model.md#known-limits) |
+
 ![Demo: a coding request is written, run and self-checked, then a file is saved in Do-it mode and undone](docs/demo.gif)
+
+| Code runs beside the chat | Do-it mode, with Undo | Audit log after tampering |
+|---|---|---|
+| ![Output panel running a Python program with input 7](docs/screenshots/output-panel.jpg) | ![A file written in Do-it mode, with an Undo button](docs/screenshots/do-it-mode.jpg) | ![Security page reporting "Tampering detected"](docs/screenshots/audit-tampered.jpg) |
 
 ## How a request flows
 
@@ -196,25 +217,13 @@ npm --prefix apps/web audit --audit-level=high
 
 ### Evaluation harness
 
-`eval/` is a repeatable harness with two parts:
-- **Coding:** 10 Python tasks, with hidden checks the model never sees.
-- **Tool calls and injection:** 12 cases through the real chat endpoint, with the
-  injection cases in Do-it mode.
-
-Each one ran 3 times; the tool and injection cases ran in two sets of 3 (before and after
-a fix). **[Results table](docs/benchmark.md)** (November 2026):
-
-| Measure | Result |
-|---|---|
-| Correct program, app routing (14B coder) | 26/30 (87%) |
-| Correct program, 7B coder only | 23/30 (77%) |
-| Tool cases passed | 35/36 (97%) |
-| Injection cases with nothing written without approval (Do-it mode on) | 36/36 (100%) |
-| Replies that claimed a write that never ran | 3 of 18 runs before the fix; now corrected by the server |
+The results are at the [top of this page](#measured-results).
 
 ```powershell
 .\.venv\Scripts\python eval\run_eval.py --runs 3
-.\.venv\Scripts\python eval\agent_eval.py --runs 3
+.\.venv\Scripts\python eval\agent_eval.py --models qwen3.5:4b,llama3.1:8b --runs 5
+.\.venv\Scripts\python eval\agent_eval.py --kind injection --disable file_check
+.\.venv\Scripts\python scripts\audit_tamper_demo.py
 ```
 
 See [eval/README.md](eval/README.md) for how each run works and why to trust the numbers.

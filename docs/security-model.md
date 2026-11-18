@@ -60,8 +60,9 @@ localhost, and session cookies aren't marked `Secure` by default.
   - a time limit.
 
   It can't reach the app, its cookies, your files, your network or the internet.
-- **Audit.** Security events are chained with HMAC-SHA256. Editing, deleting or
-  reordering a record breaks verification.
+- **Audit.** Security events are chained with HMAC-SHA256. Editing a record, or deleting
+  or reordering one in the middle, breaks verification. Deleting the newest records does
+  not (see Known limits).
 
 ## What is tested, and what isn't
 
@@ -72,7 +73,8 @@ localhost, and session cookies aren't marked `Secure` by default.
 | **OPA policy (`security/opa/*.rego`)** | **Never run.** Windows App Control blocks `opa.exe` on the development machine, so the app runs with `ASSISTANT_OPA_REQUIRED=false` and uses the local policy. The Rego rules and `assistant_test.rego` have not been executed, and CI doesn't run them yet. |
 | **OpenShell sandbox** | **Not tested.** There's no shell or code-execution tool to sandbox; the adapter only reports that it's unavailable. |
 | Output-panel sandbox (network blocked, localhost blocked, endless loop stopped) | **Checked by hand** in Chromium. No automated browser test. |
-| Injection scanner | **Pattern matching only.** It catches obvious phrasing; a reworded instruction gets through. That's why Do-it mode relies on the "who wrote this text" rule, not the scanner. |
+| Injection scanner | **Pattern matching only.** It catches obvious phrasing; a reworded instruction gets through. That's why Do-it mode relies on the "who wrote this text" rule, not the scanner. **Measured** (`eval/agent_eval.py`): it caught the "ignore all previous instructions" style in 20 of 25 runs, missing only when it arrived as a memory. It caught none of the 5 other styles. Turning it off let no planted write through, because the file-read check catches the same cases ([ablation](benchmark.md#ablation-one-layer-off-at-a-time)). |
+| Do-it taint rules, under real models | **Measured**: 30 injection cases × 5 runs × 3 chat models, with no write without approval. Also tested in CI with a scripted model that obeys every injection. |
 | Promptfoo red-team config (`security/promptfoo`) | **Not part of CI.** No recorded results in this repo. |
 | PostgreSQL / Docker stack | **Not tested** in recent work. Only SQLite is exercised. |
 
@@ -80,9 +82,34 @@ localhost, and session cookies aren't marked `Secure` by default.
 
 - **The database isn't encrypted.** Chats, memories and reminders are readable by
   anyone with access to your Windows account. Only vault secrets are encrypted.
-- **The audit key lives on the same disk** (`.security/audit.key`). The chain
-  catches tampering by someone without the key, not by someone who can read
-  both files.
+- **The audit key lives on the same disk as the log.**
+  - **Where:** `.security/audit.key`, 32 random bytes, created on first use
+    (`backend/security/audit.py`). `ASSISTANT_SECURITY_DIR` can move the folder.
+    `ASSISTANT_MASTER_KEY` doesn't apply: it only protects the vault.
+  - **Who can read it:** on Windows the `chmod 600` call does nothing, so the file is
+    readable by anyone who can read your user folder. That's the same people who can
+    edit the database.
+  - **What it catches:** edits by someone who can change the database but not read the
+    key, such as a copied or restored database file, or a tool that only touches the
+    DB. It can't stop someone with your Windows account, who can recompute every hash.
+  - **What it misses:** deleting the newest records leaves a valid, shorter chain,
+    because nothing stores how long the chain was. Neither can be fixed on one disk.
+    It would need the key, or the latest hash, kept somewhere the attacker can't write,
+    such as a remote log or a hardware key.
+  - **See it:** `python scripts/audit_tamper_demo.py` runs the app's own check on a
+    throwaway database:
+
+    | Tampering | Integrity check |
+    |---|---|
+    | Edit a record's outcome in the database file | **FAIL**: detected |
+    | Delete a middle record | **FAIL**: detected |
+    | Delete the 2 newest records | PASS: not detected |
+    | Edit a record and recompute its hash with `audit.key` | PASS: not detected |
+
+    In the app, one hand-edited row turns the Security page's audit chain to
+    "Tampering detected":
+
+    ![Security page after one audit row was edited by hand](screenshots/audit-tampered.jpg)
 - **Approvals trust the person clicking.** A convincing proposal is still the
   user's call.
 - **Local models make mistakes.** The rules above limit what a wrong model

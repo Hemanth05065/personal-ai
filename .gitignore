@@ -26,3 +26,4 @@ security/promptfoo/.promptfoo/
 
 # Throwaway database and workspaces of eval/agent_eval.py.
 eval/.work/
+.demo-audit/
