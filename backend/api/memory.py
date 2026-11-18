@@ -20,7 +20,7 @@ def list_memories(db: Database) -> list[Memory]:
 
 
 @router.post("", response_model=MemoryRead, status_code=201)
-def create_memory(payload: MemoryCreate, db: Database) -> Memory:
+def create_memory(payload: MemoryCreate, principal: OperatorDependency, db: Database) -> Memory:
     # Memories are inserted into every chat's system prompt, so an instruction
     # hidden in one would apply to all future conversations. Block, don't just flag.
     scan = record_scan(db, payload.content, "memory")
@@ -29,7 +29,9 @@ def create_memory(payload: MemoryCreate, db: Database) -> Memory:
             status_code=422,
             detail="This memory reads like an instruction to override the assistant's rules, so it was not saved.",
         )
-    memory = Memory(content=payload.content, category=payload.category)
+    memory = Memory(
+        content=payload.content, category=payload.category, created_by=principal.user_id
+    )
     db.add(memory)
     db.add(AuditLog(action="memory.create", outcome="success", detail=payload.category))
     db.commit()

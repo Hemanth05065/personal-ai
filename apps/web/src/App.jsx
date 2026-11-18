@@ -35,7 +35,8 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const mainRef = useRef(null);
 
-  const notify = useCallback((text, kind = "info") => setNotice({ text, kind }), []);
+  // notify(null) clears the notice (used when a "working on it" message is finished).
+  const notify = useCallback((text, kind = "info") => setNotice(text ? { text, kind } : null), []);
   const ready = authState === "ready";
   const chat = useChat(notify, ready);
   const reminders = useReminders(ready, notify);

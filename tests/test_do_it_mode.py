@@ -145,3 +145,16 @@ def test_viewers_cannot_undo_and_unknown_ids_are_404(sign_in, monkeypatch):
     [card] = _tools(_stream(admin, "Write v.txt"))
     assert viewer.post(f"/api/v1/files/undo/{card['undo_id']}").status_code == 403
     assert admin.post("/api/v1/files/undo/not-a-real-id").status_code == 404
+
+
+def test_undo_works_for_multi_line_content(client, monkeypatch):
+    """Regression: on Windows, text-mode writes turned \n into \r\n and Undo refused."""
+    _do_it(client)
+    ScriptedModel([_write("notes/list.txt", "Milk\nEggs\nBread")]).install(monkeypatch)
+    [card] = _tools(_stream(client, "Save my shopping list"))
+    path = _workspace() / "notes/list.txt"
+    assert path.read_bytes() == b"Milk\nEggs\nBread"
+
+    response = client.post(f"/api/v1/files/undo/{card['undo_id']}")
+    assert response.status_code == 200, response.text
+    assert not path.exists()

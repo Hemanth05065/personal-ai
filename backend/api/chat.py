@@ -21,7 +21,7 @@ from backend.models.schemas import (
 )
 from backend.security.content import record_scan
 from backend.security.dependencies import OperatorDependency, PrincipalDependency
-from backend.services.agent import run_agent
+from backend.services.agent import CONTENT_READS, run_agent
 from backend.services.ollama import OllamaClient, OllamaUnavailable, model_installed
 from backend.services.routing import (
     EXAMPLE_INPUT_PROMPT,
@@ -91,6 +91,30 @@ def _prepare(payload: ChatRequest, db: Session) -> tuple[str, list[dict[str, str
     return conversation.id, messages, [item.content for item in memories]
 
 
+def _starting_taint(db: Session, conversation_id: str, user_id: str) -> str | None:
+    """Whether this turn starts with text the user didn't write in the model's context.
+
+    Do-it mode asks before writing when it does (see agent.TAINT_REASONS):
+    - "history": a file was read earlier in this chat, so earlier replies may carry its text;
+    - "memory": an enabled memory was saved by someone else, or before authors were recorded.
+    """
+    for (content,) in db.execute(
+        select(Message.content).where(
+            Message.conversation_id == conversation_id, Message.role == "tool_event"
+        )
+    ):
+        try:
+            card = json.loads(content)
+        except (TypeError, ValueError):
+            continue
+        if card.get("action") in CONTENT_READS and card.get("status") == "completed":
+            return "history"
+    authors = db.scalars(select(Memory.created_by).where(Memory.enabled.is_(True)).limit(20)).all()
+    if any(author != user_id for author in authors):
+        return "memory"
+    return None
+
+
 @router.post("", response_model=ChatResponse)
 async def chat(payload: ChatRequest, db: Database) -> ChatResponse:
     settings = get_settings()
@@ -106,21 +130,29 @@ async def chat(payload: ChatRequest, db: Database) -> ChatResponse:
 
 class ExampleInputRequest(BaseModel):
     code: str = Field(min_length=1, max_length=60_000)
+    # True when the big coder wrote the code: it is already loaded, so it writes the sample
+    # too. Swapping models on a 6 GB GPU costs a reload and once crashed Ollama's loader.
+    big: bool = False
 
 
 @router.post("/example-input")
 async def example_input(payload: ExampleInputRequest, principal: PrincipalDependency) -> dict:
     """A sample input for a Python program, so the Output panel's self-test can run it.
 
-    Uses the fast coder. The result only ever goes to the program's input() inside the
-    sandbox, never to a tool or a file.
+    Uses whichever coder wrote the code, so no model swap is needed. The result only ever
+    goes to the program's input() inside the sandbox, never to a tool or a file.
     """
     del principal  # any signed-in user; the answer stays in their own browser sandbox
     settings = get_settings()
+    model = settings.coder_model or settings.model
+    big = settings.big_coder_model
+    if payload.big and big and await model_installed(settings, big):
+        model = big
     client = OllamaClient(
         settings,
-        model=settings.coder_model or settings.model,
+        model=model,
         context_tokens=settings.coder_context_tokens,
+        read_timeout=600,
     )
     prompt = EXAMPLE_INPUT_PROMPT.replace("{code}", payload.code)
     try:
@@ -161,6 +193,11 @@ async def chat_stream(
     # Database work goes to a worker thread; the event loop must never block on it.
     conversation_id, messages, memories = await run_in_threadpool(_prepare, payload, db)
     autopilot = await run_in_threadpool(autopilot_enabled, principal.user_id)
+    tainted_by = (
+        await run_in_threadpool(_starting_taint, db, conversation_id, principal.user_id)
+        if autopilot
+        else None
+    )
     # Coding requests go to the coding model with a bigger window.
     choice = choose_model(settings, payload.message)
     if choice.big and not await model_installed(settings, choice.model):
@@ -190,7 +227,13 @@ async def chat_stream(
         )
         try:
             async for event in run_agent(
-                ollama, principal, model_messages, memories, autopilot, choice.guidance
+                ollama,
+                principal,
+                model_messages,
+                memories,
+                autopilot,
+                choice.guidance,
+                tainted_by=tainted_by,
             ):
                 if event["type"] == "delta":
                     parts.append(event["text"])

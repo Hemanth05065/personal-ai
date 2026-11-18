@@ -79,7 +79,13 @@ def extract_example_input(reply: str) -> str:
     match = _TEXT_BLOCK.search(reply)
     text = match.group(1) if match else reply
     lines = [line.rstrip() for line in text.strip("\n").splitlines()]
+    # Drop a heading such as "# Example input": it would be fed to input() as an answer.
+    while lines and (_LABEL.match(lines[0]) or lines[0].lstrip().startswith(("#", "//"))):
+        lines.pop(0)
     return "\n".join(lines[:200])[:4000]
+
+
+_LABEL = re.compile(r"^\s*(#|//|--)?\s*(example|sample)?\s*(input|stdin)\b.*$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)

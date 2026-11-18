@@ -149,9 +149,36 @@ AUTO_RUN_ACTIONS = {"write_file"}
 # a write in the same task could have been planted by text in a file, so it asks.
 CONTENT_READS = {"read_file", "search_files"}
 
+# Why Do-it mode asks instead of running: the model's context holds text the person chatting
+# didn't write, which could carry planted instructions. Keys are the "tainted" reasons.
+TAINT_REASONS = {
+    "files": (
+        "This task read your files first, so it asks before writing.",
+        "Because this task read your files first",
+    ),
+    "history": (
+        "Files were read earlier in this chat, so it asks before writing.",
+        "Because files were read earlier in this chat",
+    ),
+    "memory": (
+        "This chat uses a saved memory you didn't write, so it asks before writing.",
+        "Because this chat includes a saved memory you didn't write",
+    ),
+}
+
+
+def _taint_reason(tainted: bool | str | None) -> str | None:
+    """Normalise the tainted argument: True (older callers) means a file read this turn."""
+    if not tainted:
+        return None
+    return tainted if tainted in TAINT_REASONS else "files"
+
 
 def handle_tool_request(
-    principal: Principal, request: ToolRequest, autopilot: bool = False, tainted: bool = False
+    principal: Principal,
+    request: ToolRequest,
+    autopilot: bool = False,
+    tainted: bool | str | None = None,
 ) -> ToolOutcome:
     card = {"id": uuid.uuid4().hex, "action": request.name, "target": None, "status": "rejected",
             "summary": "", "approval_id": None, "task_id": None}
@@ -182,11 +209,12 @@ def handle_tool_request(
             if autopilot and not tainted and request.name in AUTO_RUN_ACTIONS:
                 return _run_now(db, principal, planned, card)
             card["status"] = "awaiting_approval"
-            if autopilot and tainted:
-                card["reason"] = "This task read your files first, so it asks before writing."
+            reason = _taint_reason(tainted)
+            if autopilot and reason:
+                card["reason"], because = TAINT_REASONS[reason]
                 return ToolOutcome(card, final_text=(
-                    f"I’ve proposed this action: {card['summary']}. Because this task read your files first, "
-                    "Do-it mode asks before writing, in case a file contained planted instructions. "
+                    f"I’ve proposed this action: {card['summary']}. {because}, "
+                    "Do-it mode asks before writing, in case that text contained planted instructions. "
                     "Approve it here if it’s what you asked for."
                 ))
             return ToolOutcome(card, final_text=(
@@ -239,16 +267,18 @@ async def run_agent(
     memories: list[str],
     autopilot: bool = False,
     extra_guidance: str = "",
+    tainted_by: str | None = None,
 ) -> AsyncIterator[dict]:
     """Yield {"type": "delta", "text"} and {"type": "tool", "tool": card} events.
 
     autopilot (Do-it mode) runs the user's requested writes without an approval
-    click, unless this task already read file contents. extra_guidance is added to
-    the system prompt (coding mode uses it).
+    click, unless the model's context holds text the user didn't write: files read in this
+    task, or tainted_by (a TAINT_REASONS key the caller found before the turn started).
+    extra_guidance is added to the system prompt (coding mode uses it).
     """
     guidance = f"{AGENT_GUIDANCE}\n\n{extra_guidance}" if extra_guidance else AGENT_GUIDANCE
     conversation = list(messages)
-    tainted = False
+    tainted: str | None = tainted_by
     wrote_text = False
 
     def say(text: str) -> dict:
@@ -274,7 +304,7 @@ async def run_agent(
             # Tools do file IO and (for search) embedding calls; keep them off the event loop.
             outcome = await asyncio.to_thread(handle_tool_request, principal, request, autopilot, tainted)
             if request.name in CONTENT_READS and outcome.card["status"] == "completed":
-                tainted = True
+                tainted = tainted or "files"
             handled.append((request, outcome))
             yield {"type": "tool", "tool": outcome.card}
         endings = [outcome.final_text for _, outcome in handled if outcome.final_text]

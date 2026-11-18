@@ -20,3 +20,6 @@ tools/node/
 tools/downloads/
 tools/npm-cache/
 security/promptfoo/.promptfoo/
+
+# Throwaway data for recording demos.
+.demo/

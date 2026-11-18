@@ -78,7 +78,9 @@ def write_file(settings: Settings, arguments: dict) -> ToolResult:
         raise ToolError(f"Content exceeds the {settings.max_file_bytes}-byte writing limit.")
     target = resolve_workspace_path(settings, path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
+    # Write exactly these bytes. Text mode on Windows turned "\n" into "\r\n", so the file
+    # no longer matched what was recorded and Undo refused ("changed after this write").
+    target.write_bytes(encoded)
     return ToolResult(f"Wrote {len(encoded)} bytes to {path}.", {"path": path, "size": len(encoded)})
 
 

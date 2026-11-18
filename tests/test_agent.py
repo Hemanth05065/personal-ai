@@ -100,15 +100,26 @@ def test_file_with_prompt_injection_is_withheld_from_the_model(client, monkeypat
 
 
 def test_viewer_cannot_get_a_write_proposed(sign_in, monkeypatch):
+    """Viewers are read-only, so the chat itself is closed to them: no model call, no proposal."""
     viewer = sign_in("viewer")
-    ScriptedModel([ToolRequest("write_file", {"path": "x.txt", "content": "y"})]).install(monkeypatch)
-    events = _stream(viewer, "Write x.txt")
+    model = ScriptedModel([ToolRequest("write_file", {"path": "x.txt", "content": "y"})]).install(monkeypatch)
+    response = viewer.post("/api/v1/chat/stream", json={"message": "Write x.txt"})
 
-    [card] = _tools(events)
-    assert card["status"] == "denied"
-    assert "can’t do that" in _text(events)
+    assert response.status_code == 403
+    assert model.calls == []
     with SessionLocal() as db:
         assert db.scalars(select(Approval)).all() == []
+
+
+def test_planning_still_denies_a_viewer_write_if_one_reaches_it(sign_in, monkeypatch):
+    """Defence in depth: below the middleware, the policy denies viewer writes on its own."""
+    from backend.security.auth import Principal
+    from backend.services.agent import handle_tool_request
+
+    viewer = Principal("viewer-id", "viewer", "viewer")
+    outcome = handle_tool_request(viewer, ToolRequest("write_file", {"path": "x.txt", "content": "y"}))
+    assert outcome.card["status"] == "denied"
+    assert "can’t do that" in outcome.final_text
 
 
 def test_path_outside_workspace_fails_without_reaching_the_model(client, monkeypatch):

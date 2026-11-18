@@ -1,37 +1,70 @@
 # AI Personal Assistant
 
-A private, local-first personal assistant powered by FastAPI, React, and
-Ollama. Core AI, conversations, memory, tasks, files, and audit data remain on
-the user's computer. No paid AI API or mandatory subscription is required.
+[![CI](https://github.com/Hemanth05065/personal-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Hemanth05065/personal-ai/actions/workflows/ci.yml)
 
-## Implemented capabilities
+A private assistant that runs entirely on your own computer. You chat with local
+[Ollama](https://ollama.com) models: they answer questions, work with files in one
+workspace folder, set reminders, and write code that runs in a sandboxed panel
+beside the chat. Nothing goes to a cloud AI, and nothing costs money.
 
-- Local text conversations with `qwen3.5:4b` through Ollama
-- First-run administrator bootstrap, device-bound sessions, CSRF protection,
-  and viewer/operator/admin RBAC
-- Optional centralized OPA authorization with fail-closed production mode
-- Prompt-injection scanning and context isolation for retrieved content
-- Exact-action, expiring, single-use approvals revalidated before execution
-- HMAC-chained security audit, encrypted secret vault, and emergency stop
-- Security center for policy, sandbox, sessions, findings, and audit integrity
-- Persistent conversation history with reopen and delete controls
-- Inspectable and deletable long-term memory
-- Free cited research using Wikipedia source material and local synthesis
-- Typed task tools with execution receipts
-- Restricted UTF-8 file workspace with traversal protection and size limits
-- Mandatory approval before file writes and other limited actions
-- Server-enforced risk levels that clients cannot lower
-- Recurring automations; scheduled writes require approval on every run
-- Approval inbox, task history, and audit log
-- Browser voice dictation and operating-system speech playback
-- Optional service API-key protection
-- Installable PWA for desktop and mobile browsers
-- SQLite development mode
-- Optional PostgreSQL/pgvector, Redis, API, and web Docker stack
+The model never acts on its own. It can only *propose* an action; the server decides
+whether that action is allowed, asks you when it should, runs it, and records it.
 
-Purchases, money transfers, destructive file operations, credential changes,
-physical-security controls, and arbitrary computer control are denied by the
-local safety policy.
+![Demo: a coding request is written, run and self-checked, then a file is saved in Do-it mode and undone](docs/demo.gif)
+
+## How a request flows
+
+```mermaid
+flowchart TD
+    U([You, in the browser]) -->|HttpOnly session + CSRF| M[Auth middleware<br/>viewers are read-only]
+    M --> R{Route the message}
+    R -->|chat| C[qwen3.5:4b]
+    R -->|code question| K[qwen2.5-coder:7b]
+    R -->|"build a game / app,<br/>auto-fix rounds"| B[qwen2.5-coder:14b]
+    C & K & B -->|proposes a tool call| P[plan_task<br/>role check · local policy · emergency stop]
+    P -->|denied| X[Refused, with the reason]
+    P -->|read| T[Typed workspace tool]
+    P -->|write| A{Approval}
+    A -->|you click Approve| T
+    A -->|"Do-it mode, and the model<br/>saw only your own words"| T
+    T --> L[Receipt + HMAC-chained audit<br/>every write can be undone]
+    K & B -->|code in the reply| O[Output panel<br/>sandboxed iframe · Python on Pyodide · no network]
+    O -->|errors found| F[Auto-fix request<br/>quoting the failing line]
+    F --> B
+```
+
+- **Untrusted text is marked as untrusted.** File contents and search results reach the
+  model inside an "untrusted data" envelope. Once the model has seen any, Do-it mode
+  stops running writes automatically and asks first.
+- **Outcomes come from the server.** The chat says "Done" only when the tool's own
+  receipt says so; small models otherwise claim actions that never happened.
+- **Code is tested before you see it working.** The Output panel runs the code, plays
+  games with key presses or feeds Python a sample input, and sends errors back to the
+  coder for up to three fixes. It catches crashes, swallowed errors and code that never
+  runs, but not every logic bug. See the honest results in
+  [CONTINUE_HERE.md](CONTINUE_HERE.md).
+
+Read the [security model](docs/security-model.md) for what is enforced, and which parts
+are not tested.
+
+## What it can do
+
+- **Chat** with a local model, with saved conversations you can reopen or delete
+- **Coding**: requests are routed to a coding model; HTML, JavaScript and Python run in a
+  sandboxed Output panel with a console, Copy, and an Input box for `input()`
+- **Workspace files**: list, read, search by meaning (local embeddings) and write files
+  in one folder, with approval or Do-it mode, and Undo for every write
+- **Reminders** shown in the app and as Windows notifications
+- **Memory** you can inspect and delete, used in every chat
+- **Research**: cited reports from Wikipedia, summarised locally
+- **Safety**: sign-in with device-bound sessions, viewer/operator/admin roles, exact
+  single-use approvals, an emergency stop, and a tamper-evident audit log
+- **Voice**: browser dictation and read-aloud
+- Installable as a PWA; SQLite by default, optional PostgreSQL/Docker stack
+
+Purchases, money transfers, deleting files, changing credentials, physical-security
+controls and arbitrary computer control are not tools at all, so the model can't
+request them.
 
 ## Quick start on Windows
 

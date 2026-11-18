@@ -200,6 +200,8 @@ def test_normal_chat_gets_no_checklist(client, monkeypatch):
         ("Here you go:\n```\n5\nAlice\n```\nDone.", "5\nAlice"),
         ("```input\n1 2 3  \n4\n```", "1 2 3\n4"),
         ("7", "7"),
+        ("```text\n# Example input\n5\n```", "5"),
+        ("```\nExample input:\n3 + 4\n```", "3 + 4"),
     ],
 )
 def test_extract_example_input(reply, expected):
@@ -224,3 +226,17 @@ def test_example_input_endpoint_uses_the_fast_coder(client, monkeypatch):
 
 def test_example_input_endpoint_rejects_empty_code(client):
     assert client.post("/api/v1/chat/example-input", json={"code": ""}).status_code == 422
+
+
+def test_example_input_uses_the_big_coder_when_it_wrote_the_code(client, monkeypatch):
+    seen = {}
+
+    async def chat(self, messages, memories):
+        seen["model"] = self.model
+        return "```text\n5\n```"
+
+    monkeypatch.setattr(OllamaClient, "chat", chat)
+    monkeypatch.setattr(chat_api, "model_installed", _installed(True))
+    response = client.post("/api/v1/chat/example-input", json={"code": "input()", "big": True})
+    assert response.json() == {"input": "5"}
+    assert seen["model"] == get_settings().big_coder_model

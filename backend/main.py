@@ -94,12 +94,23 @@ async def authenticate_request(request: Request, call_next):
         return JSONResponse(status_code=401, content={"detail": "Authentication required"})
     principal, csrf_hash = authenticated
     request.state.principal = principal
-    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+    if request.method in WRITE_METHODS:
         from backend.api.auth import valid_csrf
 
         if not valid_csrf(request.headers.get("X-CSRF-Token"), csrf_hash):
             return JSONResponse(status_code=403, content={"detail": "CSRF validation failed"})
+        # Viewers are read-only everywhere: one rule here instead of a role check on each
+        # endpoint, so a new endpoint can't forget it. Signing out is the only write allowed.
+        if principal.role == "viewer" and path not in VIEWER_WRITES:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Viewers have read-only access. Ask an admin for the operator role."},
+            )
     return await call_next(request)
+
+
+WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+VIEWER_WRITES = {"/api/v1/auth/logout"}
 
 
 def _check_session(session_token: str | None, device_token: str | None) -> tuple[Principal, str] | None:

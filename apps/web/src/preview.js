@@ -29,7 +29,16 @@ export function codeBlocks(text) {
  */
 export function exampleInput(text) {
   const block = codeBlocks(text).find((item) => ["text", "txt", "input", "stdin", "plaintext"].includes(item.lang.toLowerCase()));
-  return block ? block.code.replace(/\n$/, "") : "";
+  return block ? withoutLabels(block.code.replace(/\n$/, "")) : "";
+}
+
+// Coders often head the block with a label ("# Example input"), which would otherwise be fed
+// to the program as its first answer. Same rule as extract_example_input() on the server.
+const LABEL = /^\s*(#|\/\/|--)?\s*(example|sample)?\s*(input|stdin)\b.*$/i;
+export function withoutLabels(text) {
+  const lines = text.split("\n");
+  while (lines.length && (LABEL.test(lines[0]) || /^\s*(#|\/\/)/.test(lines[0]))) lines.shift();
+  return lines.join("\n");
 }
 
 /** The block a "Run" should show for a whole reply: the biggest runnable one. */

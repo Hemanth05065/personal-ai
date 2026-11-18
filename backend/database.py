@@ -82,6 +82,7 @@ def get_db() -> Generator[Session, None, None]:
 # ---------------------------------------------------------------------------
 ADDED_COLUMNS: dict[str, dict[str, str]] = {
     "automations": {"owner_id": "VARCHAR(36)", "owner_role": "VARCHAR(30)"},
+    "memories": {"created_by": "VARCHAR(64)"},
 }
 
 

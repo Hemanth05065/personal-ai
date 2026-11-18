@@ -58,14 +58,19 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
         setTestStatus("preparing");
         notify("Writing a sample input so the program can be tested…");
         try {
-          input = (await request("/chat/example-input", { method: "POST", body: JSON.stringify({ code: block.code }) })).input;
+          input = (await request("/chat/example-input", { method: "POST", body: JSON.stringify({ code: block.code, big: last.big === true }) })).input;
         } catch { /* test without input; it reports "needs input" */ }
+        notify(null);
       }
       if (latestJob.current !== job) return;
       setTestStatus("testing");
       setPreview({ ...block, test: true, input, title });
     })();
   }, [messages, notify]);
+  // A new (empty) chat starts without the previous chat's Output panel.
+  useEffect(() => {
+    if (!messages.length) { setPreview(null); setTestStatus(null); }
+  }, [messages.length]);
   const onTestDone = useCallback((errors, code, lang, untested = false) => {
     if (!errors.length) { setTestStatus(untested ? "untested" : "passed"); return; }
     if (fixAttempts.current >= MAX_FIXES) { setTestStatus("failed"); return; }

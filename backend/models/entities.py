@@ -45,6 +45,9 @@ class Memory(Base):
     category: Mapped[str] = mapped_column(String(50), default="preference")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    # Who saved it. Memories go into every chat's system prompt, so Do-it mode only trusts
+    # memories the person chatting wrote themselves (NULL: saved before this was recorded).
+    created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class Task(Base):
