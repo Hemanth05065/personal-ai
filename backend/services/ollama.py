@@ -141,7 +141,11 @@ class OllamaClient:
             raise OllamaUnavailable(UNAVAILABLE) from exc
 
 
-_installed: tuple[float, set[str]] = (0.0, set())
+# (when last checked, model names). "Never" is -inf, not 0.0: time.monotonic() counts from
+# boot, so on a machine up less than a minute (a fresh CI runner) 0.0 looked like "just
+# checked" and the empty set answered "not installed" without asking Ollama.
+_NEVER = float("-inf")
+_installed: tuple[float, set[str]] = (_NEVER, set())
 
 
 async def model_installed(settings: Settings, name: str) -> bool:

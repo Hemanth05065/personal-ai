@@ -156,7 +156,7 @@ def test_empty_big_coder_model_turns_it_off():
 def test_model_installed_checks_ollama_and_trusts_it_when_unreachable(monkeypatch):
     import backend.services.ollama as ollama_module
 
-    monkeypatch.setattr(ollama_module, "_installed", (0.0, set()))
+    monkeypatch.setattr(ollama_module, "_installed", (float("-inf"), set()))
     unreachable = get_settings().model_copy(update={"ollama_url": "http://127.0.0.1:9"})
     assert asyncio.run(model_installed(unreachable, "anything")) is True
 
@@ -240,3 +240,16 @@ def test_example_input_uses_the_big_coder_when_it_wrote_the_code(client, monkeyp
     response = client.post("/api/v1/chat/example-input", json={"code": "input()", "big": True})
     assert response.json() == {"input": "5"}
     assert seen["model"] == get_settings().big_coder_model
+
+
+def test_model_cache_starts_unchecked_even_right_after_boot(monkeypatch):
+    """Regression: with 0.0 as "never checked", a machine up under a minute skipped the check."""
+    import backend.services.ollama as ollama_module
+
+    assert ollama_module._installed[0] == float("-inf")
+    monkeypatch.setattr(ollama_module.time, "monotonic", lambda: 5.0)  # 5 s after boot
+    monkeypatch.setattr(ollama_module, "_installed", (ollama_module._NEVER, set()))
+    unreachable = get_settings().model_copy(update={"ollama_url": "http://127.0.0.1:9"})
+    # It must try Ollama (unreachable here, so it trusts the model is there), not answer
+    # "not installed" from the empty cache.
+    assert asyncio.run(model_installed(unreachable, "anything")) is True

@@ -29,6 +29,9 @@ include = ["backend*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Tests import shared helpers from other test files (`from tests.test_agent import ...`).
+# `python -m pytest` adds the project root to the path by itself; plain `pytest` (CI) doesn't.
+pythonpath = ["."]
 asyncio_mode = "auto"
 addopts = "-p no:cacheprovider"
 

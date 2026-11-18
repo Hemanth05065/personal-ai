@@ -41,8 +41,8 @@ flowchart TD
 - **Code is tested before you see it working.** The Output panel runs the code, plays
   games with key presses or feeds Python a sample input, and sends errors back to the
   coder for up to three fixes. It catches crashes, swallowed errors and code that never
-  runs, but not every logic bug. See the honest results in
-  [CONTINUE_HERE.md](CONTINUE_HERE.md).
+  runs, but not every logic bug. See the measured results in
+  [docs/benchmark.md](docs/benchmark.md).
 
 Read the [security model](docs/security-model.md) for what is enforced, and which parts
 are not tested.
