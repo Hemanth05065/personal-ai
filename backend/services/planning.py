@@ -18,7 +18,7 @@ from backend.security.audit import append_security_event
 from backend.security.auth import Principal
 from backend.security.emergency import emergency_active
 from backend.services.execution import execute_tool_call
-from backend.services.tools import SUPPORTED_TOOLS, TOOL_RISKS
+from backend.services.tools import NETWORK_TOOLS, SUPPORTED_TOOLS, TOOL_RISKS
 
 
 class PlanRejected(Exception):
@@ -84,7 +84,7 @@ def plan_task(
         approval = Approval(task_id=task.id, action=action, reason=decision.reason)
         db.add(approval)
         db.flush()
-        targets = [str(arguments.get("path", "workspace"))]
+        targets = [str(arguments.get("path") or arguments.get("url") or arguments.get("query") or arguments.get("place") or "workspace")]
         summary = description or title
         db.add(
             ApprovalContext(
@@ -93,8 +93,12 @@ def plan_task(
                 justification=decision.reason,
                 targets=json.dumps(targets),
                 consequences=(
-                    "This action can change data in the authorized workspace. "
-                    "Approval is bound to the exact tool name and arguments and expires in 10 minutes."
+                    (
+                        "This sends the text shown to a free web service over the internet. "
+                        if action in NETWORK_TOOLS
+                        else "This action can change data in the authorized workspace. "
+                    )
+                    + "Approval is bound to the exact tool name and arguments and expires in 10 minutes."
                 ),
                 requested_by=principal.user_id,
             )

@@ -18,8 +18,16 @@ class ToolResult:
         return json.dumps({"summary": self.summary, "data": self.data}, ensure_ascii=False)
 
 
-SUPPORTED_TOOLS = {"information", "list_files", "read_file", "search_files", "write_file"}
-TOOL_RISKS = {"information": 0, "list_files": 1, "read_file": 1, "search_files": 1, "write_file": 2}
+SUPPORTED_TOOLS = {
+    "information", "list_files", "read_file", "search_files", "write_file",
+    "web_lookup", "weather", "web_search", "open_page",
+}
+TOOL_RISKS = {
+    "information": 0, "list_files": 1, "read_file": 1, "search_files": 1, "write_file": 2,
+    "web_lookup": 1, "weather": 1, "web_search": 1, "open_page": 1,
+}
+# Tools that send something over the internet (only the query or place name). See services/web.py.
+NETWORK_TOOLS = {"web_lookup", "weather", "web_search", "open_page"}
 
 
 def _workspace(settings: Settings) -> Path:
@@ -93,6 +101,13 @@ def execute_tool(tool_name: str, arguments: dict, settings: Settings) -> ToolRes
         return read_file(settings, arguments)
     if tool_name == "write_file":
         return write_file(settings, arguments)
+    if tool_name in NETWORK_TOOLS:
+        if not settings.web_lookups_enabled:
+            raise ToolError("Web lookups are turned off (ASSISTANT_WEB_LOOKUPS_ENABLED=false).")
+        from backend.services import browse, web  # they import this module
+
+        module = browse if tool_name in {"web_search", "open_page"} else web
+        return getattr(module, tool_name)(settings, arguments)
     if tool_name == "search_files":
         from backend.services.search import search_workspace  # search imports this module
 

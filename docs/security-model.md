@@ -46,9 +46,46 @@ localhost, and session cookies aren't marked `Secure` by default.
     - a file read in this task;
     - a file read earlier in the same chat;
     - an enabled memory saved by someone else, or before memory authors were
-      recorded.
-  - Wikipedia research never enters the chat or the tools: its own screen, no
-    tool access. So it can't steer a write.
+      recorded;
+    - web text from a lookup or weather result in this task.
+  - The Research page never enters the chat or the tools: it has its own screen and
+    no tool access, so it can't steer a write.
+- **Browsing** (`backend/services/browse.py`): `web_search` reads DuckDuckGo's HTML
+  results page, and `open_page` reads a public web page as plain text. Scripts are never
+  run.
+  - **Blocked addresses:** only `http`/`https` on ports 80 and 443, and only hosts whose
+    every address is on the public internet. That blocks this computer (including the
+    app's own API), home-network devices such as a router, and cloud metadata. Each
+    redirect is checked again.
+  - **Size limits:** at most 2 MB is read, and 5,000 characters go to the model.
+  - **Tests:** `tests/test_browse.py` covers each blocked address type and a redirect to
+    a router.
+  - **Known limits:**
+    - The address check and the connection look the name up separately, so a hostile DNS
+      server could answer differently the second time (DNS rebinding).
+    - DuckDuckGo's HTML page is not an official API, so search may break.
+    - A page can carry planted instructions. They're scanned and marked untrusted, and
+      can't trigger a write without approval. A page could still make the model open a
+      link carrying your words from this chat, if you haven't read files in it.
+- **Search first** (`wants_web_search` in `backend/services/routing.py`): for an everyday
+  question, the server itself runs `web_search` with the user's own words and opens the top
+  readable result before the model answers. It goes through the same `plan_task` checks as a
+  model-requested search, so once files are in the chat it waits for approval like any other
+  lookup. Small talk, date and time, sums, the user's files and reminders, text rewrites,
+  short follow-ups and coding requests skip it.
+- **Web lookups in chat** (`backend/services/web.py`): the model may call
+  `web_lookup` (Wikipedia and DuckDuckGo Instant Answers) and `weather` (Open-Meteo).
+  - **What goes out:** only the query or place name, capped at 200 characters, with
+    a generic User-Agent that names no person or repository.
+  - **What comes back** is untrusted text: scanned, wrapped, and treated like a file
+    read.
+  - **Exfiltration guard:** once your files are part of a chat, a lookup needs your
+    approval, even outside Do-it mode. That covers a file read in this task, earlier in
+    the chat, or someone else's memory. Otherwise a planted note could make the model
+    send file text out inside a search query. Approving shows the result on the card.
+  - **What it doesn't cover:** text you type yourself is never held back. If you paste
+    something private and ask the model to look it up, the query carries it.
+  - `ASSISTANT_WEB_LOOKUPS_ENABLED=false` removes both tools, for fully offline chat.
 - **Untrusted text** (files, search results, Wikipedia excerpts) is wrapped in an
   "untrusted data" envelope before the model sees it.
   - It is also scanned for injection phrasing.

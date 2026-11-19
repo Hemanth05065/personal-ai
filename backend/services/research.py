@@ -4,6 +4,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
+from backend.services.web import USER_AGENT
+
 
 class ResearchUnavailable(RuntimeError):
     pass
@@ -52,7 +54,7 @@ class WikipediaResearch:
     def _fetch(self, params: dict) -> dict:
         request = Request(
             f"{self.api_url}?{urlencode(params)}",
-            headers={"User-Agent": "LocalAIPersonalAssistant/0.1"},
+            headers={"User-Agent": USER_AGENT},
         )
         with urlopen(request, timeout=15) as response:
             return json.loads(response.read().decode("utf-8"))

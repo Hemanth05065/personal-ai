@@ -9,6 +9,8 @@ os.environ["ASSISTANT_OPA_REQUIRED"] = "false"
 os.environ["ASSISTANT_SECURITY_DIR"] = ".test-security"
 # The background loop would race with tests that call the scheduler directly.
 os.environ["ASSISTANT_SCHEDULER_ENABLED"] = "false"
+# Tests script every tool call; tests/test_search_first.py turns this on with a fake web.
+os.environ["ASSISTANT_WEB_SEARCH_FIRST"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient

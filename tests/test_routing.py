@@ -253,3 +253,22 @@ def test_model_cache_starts_unchecked_even_right_after_boot(monkeypatch):
     # It must try Ollama (unreachable here, so it trusts the model is there), not answer
     # "not installed" from the empty cache.
     assert asyncio.run(model_installed(unreachable, "anything")) is True
+
+
+@pytest.mark.parametrize("text", [
+    "Open https://www.python.org and tell me the latest Python release mentioned there.",
+    "check www.python.org for the newest version",
+    "search the web for java developer jobs in Chennai",
+    "what's the latest news about javascript frameworks?",
+])
+def test_browsing_requests_stay_with_the_chat_model(text):
+    choice = choose_model(get_settings(), text)
+    assert not choice.coding and choice.model == get_settings().model
+
+
+@pytest.mark.parametrize("text", [
+    "write a python script that downloads https://example.com",
+    "fix this: ```print(requests.get('https://x.org'))```",
+])
+def test_code_that_mentions_a_link_still_goes_to_the_coder(text):
+    assert choose_model(get_settings(), text).coding

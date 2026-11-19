@@ -108,6 +108,24 @@ def is_coding_request(text: str) -> bool:
     )
 
 
+# "Open https://www.python.org and tell me…" names Python but is a browsing task, not code:
+# routed to the coder, it wrote a script instead of opening the page. A link or a web phrase,
+# with no request to write or fix code, stays with the chat model (which has the web tools).
+_BROWSE = re.compile(
+    r"https?://|www\.\w|\b(?:search|look\s+up|browse|google)\b[^.?!\n]{0,30}\b(?:web|internet|online)\b"
+    r"|\b(?:latest|today'?s?|current)\s+(?:news|price|rate|score)s?\b",
+    re.IGNORECASE,
+)
+_WRITE_CODE = re.compile(
+    r"\b(?:write|code|script|program|function|class|debug|fix|refactor|implement|scrape|scraper|regex)\b",
+    re.IGNORECASE,
+)
+
+
+def is_browsing_request(text: str) -> bool:
+    return bool(_BROWSE.search(text)) and not _WRITE_CODE.search(text) and "```" not in text
+
+
 def is_big_job(text: str) -> bool:
     """Whole programs (a game, an app) and fixing code that failed its test."""
     return bool(_BUILD_PATTERN.search(text) or _AUTO_FIX.search(text))
@@ -122,6 +140,8 @@ def choose_model(settings: Settings, latest_user_text: str) -> ModelChoice:
             CODER_GUIDANCE,
             big=True,
         )
+    if is_browsing_request(latest_user_text):
+        return ModelChoice(settings.model, settings.context_tokens, False)
     if settings.coder_model and is_coding_request(latest_user_text):
         return ModelChoice(
             settings.coder_model, settings.coder_context_tokens, True, CODER_GUIDANCE
@@ -133,3 +153,49 @@ def without_big(settings: Settings, choice: ModelChoice) -> ModelChoice:
     """The same request on the regular coder, for when the big one isn't installed."""
     model = settings.coder_model or settings.model
     return ModelChoice(model, settings.coder_context_tokens, True, choice.guidance)
+
+
+# Search first: everyday questions are answered from the web, not the chat model's memory,
+# which is old and invents details (asked "how is GTA 6", it made up the studio and setting).
+# Skipped where a search can't help: small talk, the date and time (the model is given them),
+# sums, the user's own files and reminders, rewriting text they gave, and short follow-ups
+# that only make sense with the chat above.
+_SMALL_TALK = re.compile(
+    r"^\s*(?:hi+|hello|hey|yo|hii+|good\s+(?:morning|afternoon|evening|night)|thanks?(?:\s+you)?|thank\s+you|"
+    r"ok(?:ay)?|cool|nice|great|yes|no|yeah|nope|bye|goodbye|how\s+are\s+you|who\s+are\s+you|"
+    r"what\s+can\s+you\s+do)\b[\s!.?]*$",
+    re.IGNORECASE,
+)
+_CLOCK = re.compile(
+    r"^\s*(?:what(?:'?s|\s+is)?\s+)?(?:the\s+)?(?:today'?s?\s+)?(?:current\s+)?(?:date|time|day)"
+    r"(?:\s+(?:and|&)\s+(?:date|time|day))?(?:\s+(?:is\s+it\s+)?(?:today|now))?\s*\??\s*$",
+    re.IGNORECASE,
+)
+_SUM = re.compile(r"^[\s\d+\-*/x×÷^().,%=?]*(?:what\s+is\s+)?[\s\d+\-*/x×÷^().,%=?]+$", re.IGNORECASE)
+_OWN_STUFF = re.compile(
+    r"\b(?:my\s+(?:files?|folder|notes?|documents?|workspace)|workspace|\w+\.(?:txt|md|csv|json|py|pdf)\b|"
+    r"remind(?:er)?s?|remember\s+(?:that|this)|forget|memor(?:y|ies))\b",
+    re.IGNORECASE,
+)
+_TEXT_TASK = re.compile(
+    r"^\s*(?:please\s+)?(?:summari[sz]e|translate|rewrite|rephrase|paraphrase|proofread|correct|"
+    r"shorten|expand|reword|make\s+(?:this|it)\s+(?:shorter|longer|formal|polite))\b",
+    re.IGNORECASE,
+)
+_FOLLOW_UP = re.compile(
+    r"^\s*(?:and|so|but|why|how\s+so|really|tell\s+me\s+more|more|explain(?:\s+(?:it|that|this|more))?|"
+    r"what\s+about|continue|go\s+on|again|elaborate)\b[^.?!\n]{0,25}[?.!]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def wants_web_search(text: str) -> bool:
+    """True for an everyday question the chat model should answer from the web."""
+    words = re.findall(r"\w+", text)
+    if not words or len(text) > 400 or "```" in text:
+        return False
+    if is_coding_request(text) and not is_browsing_request(text):
+        return False
+    return not any(
+        pattern.search(text) for pattern in (_SMALL_TALK, _CLOCK, _SUM, _OWN_STUFF, _TEXT_TASK, _FOLLOW_UP)
+    )

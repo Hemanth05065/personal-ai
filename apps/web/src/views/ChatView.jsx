@@ -145,7 +145,7 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
       <div className="messages-inner">
         {!messages.length && !busy && <div className="intro">
           <h2>What would you like to work on?</h2>
-          <p className="muted">Everything you type stays on this computer.</p>
+          <p className="muted">Replies come from this computer. Web searches send only the search words or link.</p>
           {modelReady === false && <p className="field-error" role="alert">Ollama isn’t running, so replies will fail. Start Ollama, then send your message.</p>}
         </div>}
         {messages.map((message, index) => {

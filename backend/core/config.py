@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     big_coder_context_tokens: int = 16384
     # Local Ollama model that turns text into vectors for file search.
     embedding_model: str = "nomic-embed-text"
+    # Let the model look things up online (Wikipedia, DuckDuckGo Instant Answers, Open-Meteo
+    # weather). Free and keyless; only the query leaves the computer. False removes the tools.
+    web_lookups_enabled: bool = True
+    # Everyday (non-coding) questions: search the web and open a result before answering.
+    web_search_first: bool = True
     allowed_origins: str = "http://localhost:5173"
     max_context_messages: int = 20
     workspace_dir: Path = Path("assistant_workspace")

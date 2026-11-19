@@ -362,6 +362,8 @@ def _prepare_environment() -> None:
     os.environ["ASSISTANT_OPA_REQUIRED"] = "false"
     os.environ["ASSISTANT_SECURITY_DIR"] = str(WORK / "security")
     os.environ["ASSISTANT_SCHEDULER_ENABLED"] = "false"
+    # Measures the model's own tool choices, so the server doesn't search for it.
+    os.environ["ASSISTANT_WEB_SEARCH_FIRST"] = "false"
     os.environ.pop("ASSISTANT_API_KEY", None)
 
 

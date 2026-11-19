@@ -21,12 +21,13 @@ from backend.models.schemas import (
 )
 from backend.security.content import record_scan
 from backend.security.dependencies import OperatorDependency, PrincipalDependency
-from backend.services.agent import CONTENT_READS, run_agent
+from backend.services.agent import CONTENT_READS, NETWORK_TOOLS, run_agent
 from backend.services.ollama import OllamaClient, OllamaUnavailable, model_installed
 from backend.services.routing import (
     EXAMPLE_INPUT_PROMPT,
     choose_model,
     extract_example_input,
+    wants_web_search,
     with_reminder,
     without_big,
 )
@@ -96,8 +97,11 @@ def _starting_taint(db: Session, conversation_id: str, user_id: str) -> str | No
 
     Do-it mode asks before writing when it does (see agent.TAINT_REASONS):
     - "history": a file was read earlier in this chat, so earlier replies may carry its text;
-    - "memory": an enabled memory was saved by someone else, or before authors were recorded.
+    - "memory": an enabled memory was saved by someone else, or before authors were recorded;
+    - "web": only web text was read earlier. Writes still ask, but web lookups don't: the
+      chat holds none of the user's files, so a lookup can't leak them.
     """
+    seen_web = False
     for (content,) in db.execute(
         select(Message.content).where(
             Message.conversation_id == conversation_id, Message.role == "tool_event"
@@ -108,11 +112,13 @@ def _starting_taint(db: Session, conversation_id: str, user_id: str) -> str | No
         except (TypeError, ValueError):
             continue
         if card.get("action") in CONTENT_READS and card.get("status") == "completed":
-            return "history"
+            if card["action"] not in NETWORK_TOOLS:
+                return "history"
+            seen_web = True
     authors = db.scalars(select(Memory.created_by).where(Memory.enabled.is_(True)).limit(20)).all()
     if any(author != user_id for author in authors):
         return "memory"
-    return None
+    return "web" if seen_web else None
 
 
 @router.post("", response_model=ChatResponse)
@@ -193,11 +199,8 @@ async def chat_stream(
     # Database work goes to a worker thread; the event loop must never block on it.
     conversation_id, messages, memories = await run_in_threadpool(_prepare, payload, db)
     autopilot = await run_in_threadpool(autopilot_enabled, principal.user_id)
-    tainted_by = (
-        await run_in_threadpool(_starting_taint, db, conversation_id, principal.user_id)
-        if autopilot
-        else None
-    )
+    # Always worked out, not only in Do-it mode: web lookups ask first once files are in the chat.
+    tainted_by = await run_in_threadpool(_starting_taint, db, conversation_id, principal.user_id)
     # Coding requests go to the coding model with a bigger window.
     choice = choose_model(settings, payload.message)
     if choice.big and not await model_installed(settings, choice.model):
@@ -234,6 +237,9 @@ async def chat_stream(
                 autopilot,
                 choice.guidance,
                 tainted_by=tainted_by,
+                search_first=payload.message
+                if settings.web_search_first and not choice.coding and wants_web_search(payload.message)
+                else None,
             ):
                 if event["type"] == "delta":
                     parts.append(event["text"])

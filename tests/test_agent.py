@@ -25,7 +25,7 @@ class ScriptedModel:
         model = self
 
         async def stream_chat(_self, messages, memories, tools=None, system_extra=""):
-            model.calls.append({"messages": list(messages), "tools": tools})
+            model.calls.append({"messages": list(messages), "tools": tools, "system_extra": system_extra})
             for item in (model.rounds.pop(0) if model.rounds else ["(script finished)"]):
                 yield item
 

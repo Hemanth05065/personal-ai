@@ -77,6 +77,21 @@ are not tested.
   in one folder, with approval or Do-it mode, and Undo for every write
 - **Reminders** shown in the app and as Windows notifications
 - **Memory** you can inspect and delete, used in every chat
+- **Small browsing tasks**: the model can do several things online:
+  - search the web (DuckDuckGo);
+  - open and read public pages;
+  - look up facts (Wikipedia, DuckDuckGo Instant Answers);
+  - get the weather (Open-Meteo).
+
+  Everyday (non-coding) questions are searched first: the server searches DuckDuckGo with
+  your question, reads the top result, and the model answers only from it, with the
+  source linked. Greetings, the date, sums, your own files and code skip this
+  (`ASSISTANT_WEB_SEARCH_FIRST=false` turns it off). It's free and needs no account.
+  Only the query or link leaves your computer.
+  Addresses on your own computer or home network are blocked. Once your files are in a
+  chat, it asks before going online. Turn it all off with
+  `ASSISTANT_WEB_LOOKUPS_ENABLED=false`.
+- **Today's date and time** are given to the model with every message
 - **Research**: cited reports from Wikipedia, summarised locally
 - **Safety**: sign-in with device-bound sessions, viewer/operator/admin roles, exact
   single-use approvals, an emergency stop, and a tamper-evident audit log
