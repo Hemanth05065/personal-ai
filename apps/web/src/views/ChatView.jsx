@@ -21,6 +21,18 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
   // Do-it mode: the user's own commands run without an approval click (saved per user on the server).
   const [doIt, setDoIt] = useState(null);
   useEffect(() => { request("/settings/me").then((s) => setDoIt(s.autopilot)).catch(() => setDoIt(false)); }, []);
+  // Web search: everyday questions are searched on DuckDuckGo first (saved per user).
+  const [web, setWeb] = useState(null); // { on, available }
+  useEffect(() => { request("/settings/me").then((s) => setWeb({ on: s.web_search, available: s.web_available })).catch(() => setWeb(null)); }, []);
+  async function toggleWeb() {
+    try {
+      const saved = await request("/settings/me", { method: "PUT", body: JSON.stringify({ web_search: !web.on }) });
+      setWeb({ on: saved.web_search, available: saved.web_available });
+      notify(saved.web_search
+        ? "Web search is on. Everyday questions are searched on DuckDuckGo before the answer; only your question is sent."
+        : "Web search is off. Questions stay on this computer unless the model asks to look something up.");
+    } catch (error) { notify(error.message, "error"); }
+  }
   async function toggleDoIt() {
     try {
       const saved = await request("/settings/me", { method: "PUT", body: JSON.stringify({ autopilot: !doIt }) });
@@ -145,7 +157,9 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
       <div className="messages-inner">
         {!messages.length && !busy && <div className="intro">
           <h2>What would you like to work on?</h2>
-          <p className="muted">Replies come from this computer. Web searches send only the search words or link.</p>
+          <p className="muted">Replies come from this computer. {web?.on
+            ? "Web search is on: everyday questions are sent to DuckDuckGo first, and those answers are labelled."
+            : "Web searches send only the search words or link."}</p>
           {modelReady === false && <p className="field-error" role="alert">Ollama isn’t running, so replies will fail. Start Ollama, then send your message.</p>}
         </div>}
         {messages.map((message, index) => {
@@ -160,7 +174,7 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
           }
           const tools = message.tools || [];
           return <article className={`msg msg-${message.role}`} key={key}>
-            <p className="msg-who">{WHO[message.role] || message.role}{message.coding && <span className="msg-tag">{message.big ? "Big coding model (slower, more careful)" : "Coding model"}</span>}</p>
+            <p className="msg-who">{WHO[message.role] || message.role}{message.coding && <span className="msg-tag">{message.big ? "Big coding model (slower, more careful)" : "Coding model"}</span>}{message.searched && <span className="msg-tag">Searched the web</span>}</p>
             {tools.map(card)}
             {message.role === "assistant"
               ? (message.streaming && !message.content
@@ -182,6 +196,8 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
       <textarea aria-label="Message" rows={2} value={input} placeholder="Message your assistant" onChange={(event) => setInput(event.target.value)}
         onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) submit(event); }} />
       <div className="composer-actions">
+        {web?.available && <button type="button" className={`btn btn-sm do-it${web.on ? " is-on" : ""}`} aria-pressed={web.on} onClick={toggleWeb}
+          title="When on, everyday questions are sent to DuckDuckGo before the assistant answers">Web search: {web.on ? "On" : "Off"}</button>}
         {doIt !== null && <button type="button" className={`btn btn-sm do-it${doIt ? " is-on" : ""}`} aria-pressed={doIt} onClick={toggleDoIt}>Do-it mode: {doIt ? "On" : "Off"}</button>}
         <button type="button" className="btn" onClick={dictate} aria-pressed={listening}>{listening ? "Listening..." : "Dictate"}</button>
         {busy

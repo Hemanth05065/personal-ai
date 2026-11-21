@@ -113,3 +113,34 @@ def test_turned_off_it_leaves_the_choice_to_the_model(client, monkeypatch, searc
     monkeypatch.setattr(get_settings(), "web_search_first", False)
     ScriptedModel(["From memory."]).install(monkeypatch)
     assert _tools(_stream(client, "gold rate in chennai today")) == []
+
+
+def test_a_searched_answer_is_labelled(client, monkeypatch, search_first):
+    ScriptedModel(["Answer."], ["Hello!"]).install(monkeypatch)
+    start = next(e for e in _stream(client, "gold rate in chennai today") if e["type"] == "start")
+    assert start["search_first"] is True
+    start = next(e for e in _stream(client, "hi") if e["type"] == "start")
+    assert start["search_first"] is False
+
+
+def test_the_web_search_button_turns_it_off_for_this_user(client, monkeypatch, search_first):
+    assert client.get("/api/v1/settings/me").json()["web_search"] is True  # the server default
+    saved = client.put("/api/v1/settings/me", json={"web_search": False}).json()
+    assert saved == {"autopilot": False, "web_search": False, "web_available": True}
+    ScriptedModel(["From memory."]).install(monkeypatch)
+    assert _tools(_stream(client, "gold rate in chennai today")) == []
+    assert search_first == []
+
+
+def test_switching_web_search_is_recorded_in_the_audit_log(client, search_first):
+    from backend.database import SessionLocal
+    from backend.models.entities import SecureAuditRecord
+    client.put("/api/v1/settings/me", json={"web_search": False})
+    with SessionLocal() as db:
+        actions = [record.event_type for record in db.query(SecureAuditRecord).all()]
+    assert "settings.web_search" in actions
+
+
+def test_with_web_access_off_the_button_is_hidden_and_nothing_is_searched(client, monkeypatch, search_first):
+    monkeypatch.setattr(get_settings(), "web_lookups_enabled", False)
+    assert client.get("/api/v1/settings/me").json() == {"autopilot": False, "web_search": False, "web_available": False}

@@ -32,8 +32,8 @@ localhost, and session cookies aren't marked `Secure` by default.
   words can still claim an action: the evaluation caught "I have saved these notes"
   with no tool call, obeying a planted note. When a reply claims a save or write and
   no write ran that turn, the server adds a correction after it. This is a phrase
-  match (`WRITE_CLAIM` in `backend/services/agent.py`), so an unusual wording can
-  slip past it. The file itself is never at risk: only the text is wrong.
+  match, judged clause by clause (`claims_a_write` in `backend/services/agent.py`), so an
+  unusual wording can slip past it. The file itself is never at risk: only the text is wrong.
 - **Roles.**
   - Viewers are read-only: one middleware rule rejects every write except
     signing out (`backend/main.py`). A test walks the whole API, so a new
@@ -47,7 +47,8 @@ localhost, and session cookies aren't marked `Secure` by default.
     - a file read earlier in the same chat;
     - an enabled memory saved by someone else, or before memory authors were
       recorded;
-    - web text from a lookup or weather result in this task.
+    - web text (a search, page, lookup or weather result) in this task or earlier in the
+      chat, including the page search first opened.
   - The Research page never enters the chat or the tools: it has its own screen and
     no tool access, so it can't steer a write.
 - **Browsing** (`backend/services/browse.py`): `web_search` reads DuckDuckGo's HTML
@@ -69,7 +70,11 @@ localhost, and session cookies aren't marked `Secure` by default.
       link carrying your words from this chat, if you haven't read files in it.
 - **Search first** (`wants_web_search` in `backend/services/routing.py`): for an everyday
   question, the server itself runs `web_search` with the user's own words and opens the top
-  readable result before the model answers. It goes through the same `plan_task` checks as a
+  readable result before the model answers.
+  - **It's visible and switchable:** a "Web search: On/Off" button beside Do-it mode, saved
+    per user and recorded in the audit log. Every searched answer is labelled "Searched the
+    web" and shows the search and page cards. The server default is
+    `ASSISTANT_WEB_SEARCH_FIRST`. It goes through the same `plan_task` checks as a
   model-requested search, so once files are in the chat it waits for approval like any other
   lookup. Small talk, date and time, sums, the user's files and reminders, text rewrites,
   short follow-ups and coding requests skip it.

@@ -28,9 +28,9 @@ def _write(path, content):
 # ---------- The switch ----------
 
 def test_do_it_mode_is_off_by_default_and_toggle_is_audited(client):
-    assert client.get("/api/v1/settings/me").json() == {"autopilot": False}
+    assert client.get("/api/v1/settings/me").json()["autopilot"] is False
     _do_it(client, True)
-    assert client.get("/api/v1/settings/me").json() == {"autopilot": True}
+    assert client.get("/api/v1/settings/me").json()["autopilot"] is True
     _do_it(client, False)
     with SessionLocal() as db:
         events = db.scalars(select(SecureAuditRecord).where(SecureAuditRecord.event_type == "settings.do_it_mode")).all()
@@ -45,7 +45,7 @@ def test_viewers_cannot_turn_on_do_it_mode(sign_in):
 def test_setting_is_per_user(sign_in):
     first, second = sign_in("operator"), sign_in("admin")
     _do_it(first)
-    assert second.get("/api/v1/settings/me").json() == {"autopilot": False}
+    assert second.get("/api/v1/settings/me").json()["autopilot"] is False
 
 
 # ---------- Running commands ----------

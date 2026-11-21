@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.api.settings import autopilot_enabled
+from backend.api.settings import autopilot_enabled, web_search_enabled
 from backend.core.config import get_settings
 from backend.database import SessionLocal, get_db
 from backend.models.entities import AuditLog, Conversation, Memory, Message
@@ -205,6 +205,13 @@ async def chat_stream(
     choice = choose_model(settings, payload.message)
     if choice.big and not await model_installed(settings, choice.model):
         choice = without_big(settings, choice)
+    # Search first: an everyday question is searched before the model answers, if the user
+    # has the Web search button on. The reply is labelled so it's never a silent lookup.
+    search_first = (
+        not choice.coding
+        and wants_web_search(payload.message)
+        and await run_in_threadpool(web_search_enabled, principal.user_id)
+    )
     # The model sees the coding checklist after the request; the saved chat doesn't.
     model_messages = with_reminder(messages) if choice.coding else messages
     ollama = OllamaClient(
@@ -226,6 +233,7 @@ async def chat_stream(
                 "model": choice.model,
                 "coding": choice.coding,
                 "big": choice.big,
+                "search_first": search_first,
             }
         )
         try:
@@ -237,9 +245,7 @@ async def chat_stream(
                 autopilot,
                 choice.guidance,
                 tainted_by=tainted_by,
-                search_first=payload.message
-                if settings.web_search_first and not choice.coding and wants_web_search(payload.message)
-                else None,
+                search_first=payload.message if search_first else None,
             ):
                 if event["type"] == "delta":
                     parts.append(event["text"])

@@ -229,6 +229,10 @@ CLAIMS = [
     "He guardado una copia en backup/copia.txt.",
     "Backup complete: backup/copy.txt.",
     "The file backup/copy.txt has been created successfully.",
+    # Missed while negation was judged per sentence: the claim sits in the first clause.
+    "I created notes/backup.txt, and if you want I can add more.",
+    "Saved as summary.md — no further action needed.",
+    "I wrote todo.txt, which should contain the list.",
 ]
 HONEST = [
     "I can't save files directly.",
@@ -245,6 +249,12 @@ HONEST = [
     "The note says hiring is paused until June.",
     "Paris.",
     "12 times 12 is 144.",
+    # Conditions and futures stay honest when split into clauses.
+    "If you approve, the file will be saved to notes.txt.",
+    "Once approved, I'll write todo.txt.",
+    "I can save it to backup/copy.txt, but only after you approve.",
+    "The note mentions a file called budget.xlsx, which I haven't opened.",
+    "Your copy is not saved yet - it needs approval.",
 ]
 
 

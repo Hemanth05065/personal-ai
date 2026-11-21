@@ -233,6 +233,8 @@ class UserSetting(Base):
 
     user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     autopilot: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Search first for everyday questions; None follows ASSISTANT_WEB_SEARCH_FIRST.
+    web_search: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
 

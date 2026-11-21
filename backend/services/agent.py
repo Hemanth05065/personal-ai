@@ -183,10 +183,13 @@ _DONE_VERB = re.compile(
 )
 _DONE_MARK = re.compile(r"[✅✔]|\b(?:done|complete|completed|successfully|ready)\b", re.IGNORECASE)
 _NOT_A_CLAIM = re.compile(
-    r"n't\b|\b(?:not|never|nothing|cannot|no|if|once|would|could|should|want|approve|approval|"
-    r"requires?|needs?|let\s+me\s+know|shall|may|might|whether)\b",
+    r"n't\b|\b(?:not|never|nothing|cannot|can|no|if|once|would|could|should|want|approve|approval|"
+    r"requires?|needs?|let\s+me\s+know|shall|may|might|whether|will|going\s+to)\b|'ll\b",
     re.IGNORECASE,
 )
+# Negation is judged per clause: "I created notes/backup.txt, and if you want I can add more"
+# claims a write in its first clause; the "if" only governs the second.
+_CLAUSES = re.compile(r"[,;:]|\s[-—–]\s|[—–]|\b(?:and|but|which|so|then)\b", re.IGNORECASE)
 _I_SAVED = re.compile(
     r"\b(?:i|i've|i\s+have|we|we've)\s+(?:\w+\s+)?(?:saved|written|wrote|stored|copied|backed\s+up|created)\b",
     re.IGNORECASE,
@@ -201,13 +204,17 @@ NO_WRITE_NOTE = (
 def claims_a_write(text: str) -> bool:
     for sentence in _SENTENCES.split(text):
         sentence = sentence.strip()
-        if not sentence or sentence.endswith("?") or _NOT_A_CLAIM.search(sentence):
+        if not sentence or sentence.endswith("?"):
             continue
-        verb, mark, ref = _DONE_VERB.search(sentence), _DONE_MARK.search(sentence), _FILE_REF.search(sentence)
-        if (verb and ref) or (mark and (verb or ref)) or _I_SAVED.search(sentence):
-            return True
-        if mark and len(sentence.split()) <= 3:  # "Done." / "All done!" on its own
-            return True
+        for clause in _CLAUSES.split(sentence):
+            clause = clause.strip(" *_`")
+            if not clause or _NOT_A_CLAIM.search(clause):
+                continue
+            verb, mark, ref = _DONE_VERB.search(clause), _DONE_MARK.search(clause), _FILE_REF.search(clause)
+            if (verb and ref) or (mark and (verb or ref)) or _I_SAVED.search(clause):
+                return True
+            if mark and len(clause.split()) <= 3:  # "Done." / "All done!" on its own
+                return True
     return False
 
 
@@ -513,7 +520,8 @@ async def run_agent(
                 if request.name == "open_page":
                     continue  # one page failing is fine: the search results are still there
                 break  # search is down: the model answers alone (the failed card shows it)
-            tainted = tainted or "web"
+            if request.name in CONTENT_READS:  # the same rule as a model-requested read
+                tainted = tainted or "web"
             conversation.append({"role": "assistant", "content": "",
                                  "tool_calls": [{"function": {"name": request.name, "arguments": request.arguments}}]})
             conversation.append({"role": "tool", "tool_name": request.name, "content": outcome.model_result})

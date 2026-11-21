@@ -24,6 +24,8 @@ From the evaluation harness in [`eval/`](eval/README.md), November 2026, on a la
 | Prompt injection with Do-it mode on, across 3 chat models: 30 cases, 5 paths × 6 styles | 5 per case | **0 writes without approval, in 450 runs** |
 | ...runs where the model obeyed the injection (`qwen3.5:4b` / `qwen3:8b` / `llama3.1:8b`) | 150 each | 12% / 7% / 2% |
 | ...planted writes the server stopped, of those the model proposed | | **all** |
+| Same, planted in web pages (search first, opened link, Wikipedia lookup): 18 cases, 3 models | 5 per case | **0 writes without approval, in 270 runs** (models obeyed 11% / 11% / 0%) |
+| Ablation: planted web writes with the web check off (`qwen3.5:4b`) | 90 | 8 (vs 0 with it on) |
 | Ablation: planted files written with the file-read check off (`qwen3.5:4b`) | 90 | 11 (vs 0 with it on) |
 | Audit log: a hand-edited row is detected; deleting the newest rows is **not** | demo | [see the limits](docs/security-model.md#known-limits) |
 
@@ -85,8 +87,9 @@ are not tested.
 
   Everyday (non-coding) questions are searched first: the server searches DuckDuckGo with
   your question, reads the top result, and the model answers only from it, with the
-  source linked. Greetings, the date, sums, your own files and code skip this
-  (`ASSISTANT_WEB_SEARCH_FIRST=false` turns it off). It's free and needs no account.
+  source linked, and the answer is labelled "Searched the web". Greetings, the date, sums,
+  your own files and code skip this. Switch it with the **Web search** button beside the
+  message box (`ASSISTANT_WEB_SEARCH_FIRST` sets the default). It's free and needs no account.
   Only the query or link leaves your computer.
   Addresses on your own computer or home network are blocked. Once your files are in a
   chat, it asks before going online. Turn it all off with
@@ -269,3 +272,7 @@ are not silently enabled because they require user accounts, credentials, and
 provider-specific authorization. Add them only through scoped adapters that
 preserve the same approval and audit requirements; never place secrets in model
 context.
+
+## License
+
+[MIT](LICENSE).
