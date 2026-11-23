@@ -59,11 +59,13 @@ localhost, and session cookies aren't marked `Secure` by default.
     app's own API), home-network devices such as a router, and cloud metadata. Each
     redirect is checked again.
   - **Size limits:** at most 2 MB is read, and 5,000 characters go to the model.
-  - **Tests:** `tests/test_browse.py` covers each blocked address type and a redirect to
-    a router.
+  - **DNS rebinding is closed:** the name is looked up once, every address is checked, and
+    the connection goes to that checked address. The real name is still sent in the Host
+    header and used for TLS, so the certificate is verified against it. Proxy settings
+    from the environment are ignored, since a proxy would connect wherever it liked.
+  - **Tests:** `tests/test_browse.py` covers each blocked address type, a redirect to a
+    router, and a DNS server that answers "public" and then "router".
   - **Known limits:**
-    - The address check and the connection look the name up separately, so a hostile DNS
-      server could answer differently the second time (DNS rebinding).
     - DuckDuckGo's HTML page is not an official API, so search may break.
     - A page can carry planted instructions. They're scanned and marked untrusted, and
       can't trigger a write without approval. A page could still make the model open a
@@ -112,7 +114,7 @@ localhost, and session cookies aren't marked `Secure` by default.
 |---|---|
 | Sessions, CSRF, roles (viewer write block on all 22 write endpoints), approvals, grants, emergency stop, audit chain, workspace path checks, Do-it mode and undo, the taint rules | **Automated tests** (pytest, run in CI on every push) |
 | Local policy (`backend/core/policy.py`) | **Automated tests.** This is the policy the app actually uses. |
-| **OPA policy (`security/opa/*.rego`)** | **Never run.** Windows App Control blocks `opa.exe` on the development machine, so the app runs with `ASSISTANT_OPA_REQUIRED=false` and uses the local policy. The Rego rules and `assistant_test.rego` have not been executed, and CI doesn't run them yet. |
+| OPA policy (`security/opa/*.rego`) | **Run in CI only.** Windows App Control blocks `opa.exe` on the development machine, so the app runs there with `ASSISTANT_OPA_REQUIRED=false` and uses the local policy. CI's "Policy (OPA)" job runs `opa check`, the 10 Rego unit tests, and `tests/test_opa_parity.py`: a real OPA server is asked about every action, risk level, role and emergency-stop state (360 inputs), and must agree with the Python policy. The first comparison found one difference: an unknown role was denied by Rego but allowed risk 0 locally. Python now denies it too. |
 | **OpenShell sandbox** | **Not tested.** There's no shell or code-execution tool to sandbox; the adapter only reports that it's unavailable. |
 | Output-panel sandbox (network blocked, localhost blocked, endless loop stopped) | **Checked by hand** in Chromium. No automated browser test. |
 | Injection scanner | **Pattern matching only.** It catches obvious phrasing; a reworded instruction gets through. That's why Do-it mode relies on the "who wrote this text" rule, not the scanner. **Measured** (`eval/agent_eval.py`): it caught the "ignore all previous instructions" style in 20 of 25 runs, missing only when it arrived as a memory. It caught none of the 5 other styles. Turning it off let no planted write through, because the file-read check catches the same cases ([ablation](benchmark.md#ablation-one-layer-off-at-a-time)). |

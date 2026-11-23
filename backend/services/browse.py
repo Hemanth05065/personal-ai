@@ -10,8 +10,11 @@ Guards, all in this file:
 Everything returned is untrusted: agent.py scans it, wraps it and treats it like a file read,
 and once the user's files are in a chat these tools need approval (a URL can carry data out).
 
-Known limit: the address check and the connection resolve the name separately, so a hostile DNS
-server that answers differently the second time (DNS rebinding) could slip past it.
+DNS rebinding: the name is resolved once, every address is checked, and the connection goes to
+that checked address (the real name still goes in the Host header and in TLS, so certificates are
+verified against it). A hostile DNS server can't answer "public" for the check and "private" for
+the connection, because there is no second lookup. Proxy settings from the environment are
+ignored for the same reason: a proxy would connect wherever it liked.
 """
 
 from __future__ import annotations
@@ -40,19 +43,27 @@ TEXT_TYPES = ("text/html", "text/plain", "application/xhtml+xml")
 # ---------- address checks ----------
 
 
-def _public_addresses(host: str) -> None:
-    """Raise unless every address the host resolves to is on the public internet."""
+def _public_addresses(host: str) -> str:
+    """Raise unless every address the host resolves to is on the public internet; return one."""
     try:
         infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
     except socket.gaierror as exc:
         raise ToolError(f"Couldn't find the site {host}.") from exc
-    for info in infos:
-        address = ipaddress.ip_address(info[4][0].split("%")[0])
+    addresses = [ipaddress.ip_address(info[4][0].split("%")[0]) for info in infos]
+    if not addresses:
+        raise ToolError(f"Couldn't find the site {host}.")
+    for address in addresses:
         if not address.is_global or address.is_multicast:
             raise ToolError("That address is on this computer or a private network, so it's blocked.")
+    return str(addresses[0])
 
 
 def check_url(url: str) -> str:
+    return _checked(url)[0]
+
+
+def _checked(url: str) -> tuple[str, str]:
+    """(url, the public address it was checked against). Connect to that address, not the name."""
     url = url.strip()
     if len(url) > MAX_URL_CHARS:
         raise ToolError("That link is too long.")
@@ -63,8 +74,18 @@ def check_url(url: str) -> str:
         raise ToolError("Links with a user name or password in them aren't opened.")
     if parts.port not in (None, 80, 443):
         raise ToolError("Only web pages on the standard ports (80 and 443) can be opened.")
-    _public_addresses(parts.hostname)
-    return url
+    return url, _public_addresses(parts.hostname)
+
+
+def _pinned(url: str, address: str) -> tuple[str, dict, dict]:
+    """The request URL with the host replaced by the checked address, plus the Host header and
+    the TLS name, so the server and its certificate are still checked against the real name."""
+    parts = urlparse(url)
+    ip = f"[{address}]" if ":" in address else address
+    netloc = f"{ip}:{parts.port}" if parts.port else ip
+    host = parts.hostname + (f":{parts.port}" if parts.port else "")
+    extensions = {"sni_hostname": parts.hostname} if parts.scheme == "https" else {}
+    return parts._replace(netloc=netloc).geturl(), {"Host": host}, extensions
 
 
 # ---------- fetching ----------
@@ -72,12 +93,13 @@ def check_url(url: str) -> str:
 
 def _fetch(url: str, *, data: dict | None = None) -> tuple[str, str, str]:
     """GET (or POST data) with every redirect re-checked. Returns (final url, content type, text)."""
-    with httpx.Client(timeout=15, verify=tls_context(), follow_redirects=False,
+    with httpx.Client(timeout=15, verify=tls_context(), follow_redirects=False, trust_env=False,
                       headers={"User-Agent": USER_AGENT, "Accept": "text/html,text/plain;q=0.9"}) as client:
         for _ in range(MAX_REDIRECTS + 1):
-            check_url(url)
+            url, address = _checked(url)
+            target, headers, extensions = _pinned(url, address)
             method = "POST" if data is not None else "GET"
-            with client.stream(method, url, data=data) as response:
+            with client.stream(method, target, data=data, headers=headers, extensions=extensions) as response:
                 if response.is_redirect:
                     url = urljoin(url, response.headers.get("location", ""))
                     data = None  # a redirect after a POST is followed as a GET
@@ -92,7 +114,8 @@ def _fetch(url: str, *, data: dict | None = None) -> tuple[str, str, str]:
                     body += chunk
                     if len(body) > MAX_BYTES:
                         break
-                return str(response.url), kind, bytes(body[:MAX_BYTES]).decode(response.encoding or "utf-8", "replace")
+                # The URL by name, not the address it was fetched from.
+                return url, kind, bytes(body[:MAX_BYTES]).decode(response.encoding or "utf-8", "replace")
         raise ToolError("The page redirected too many times.")
 
 

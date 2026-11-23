@@ -38,3 +38,11 @@ def test_required_opa_fails_closed_every_time(unreachable, monkeypatch):
         decision = opa.evaluate_with_opa({})
         assert decision is not None and not decision.allow
     assert len(unreachable) == 2  # never skipped: each decision really checked
+
+
+def test_an_unknown_role_gets_nothing_as_in_the_rego_policy(monkeypatch):
+    from backend.core.policy import RiskLevel, evaluate_action
+
+    monkeypatch.setattr("backend.core.policy.evaluate_with_opa", lambda document: None)
+    assert not evaluate_action("list_files", RiskLevel.INFORMATION, "guest").allowed
+    assert evaluate_action("list_files", RiskLevel.INFORMATION, "viewer").allowed

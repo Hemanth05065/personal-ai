@@ -63,9 +63,50 @@ def test_a_redirect_to_a_private_address_is_blocked(monkeypatch):
         def __enter__(self): return self
         def __exit__(self, *a): return False
 
-    monkeypatch.setattr(browse.httpx.Client, "stream", lambda self, method, url, data=None: Redirect())
+    monkeypatch.setattr(browse.httpx.Client, "stream", lambda self, method, url, **kw: Redirect())
     with pytest.raises(ToolError, match="private network"):
         browse._fetch("https://public.example/")
+
+
+class Page:
+    is_redirect, status_code, encoding = False, 200, "utf-8"
+    def __init__(self): self.headers = {"content-type": "text/html"}
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def iter_bytes(self): yield b"<p>hello</p>"
+
+
+def test_dns_rebinding_cannot_swap_the_address(monkeypatch):
+    """A hostile DNS server answers public for the check, then the router. There is no second
+    lookup: the connection goes to the address that was checked."""
+    answers = iter(["93.184.215.14", "192.168.1.1", "192.168.1.1"])
+    monkeypatch.setattr(socket, "getaddrinfo", lambda host, *a, **k: [(2, 1, 6, "", (next(answers), 0))])
+    sent = []
+
+    def stream(self, method, url, **kw):
+        sent.append((url, kw["headers"], kw["extensions"]))
+        return Page()
+
+    monkeypatch.setattr(browse.httpx.Client, "stream", stream)
+    final, _, body = browse._fetch("https://rebind.example/page?x=1")
+    assert sent == [("https://93.184.215.14/page?x=1", {"Host": "rebind.example"}, {"sni_hostname": "rebind.example"})]
+    assert final == "https://rebind.example/page?x=1" and "hello" in body
+
+
+def test_ipv6_and_plain_http_are_pinned_too(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda host, *a, **k: [(23, 1, 6, "", ("2606:4700::1", 0, 0, 0))])
+    sent = []
+    monkeypatch.setattr(browse.httpx.Client, "stream",
+                        lambda self, method, url, **kw: sent.append((url, kw["headers"], kw["extensions"])) or Page())
+    browse._fetch("http://v6.example:80/")
+    assert sent == [("http://[2606:4700::1]:80/", {"Host": "v6.example:80"}, {})]
+
+
+def test_one_private_address_among_public_ones_blocks_the_site(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda host, *a, **k: [
+        (2, 1, 6, "", ("93.184.215.14", 0)), (2, 1, 6, "", ("10.0.0.5", 0))])
+    with pytest.raises(ToolError, match="private network"):
+        browse.check_url("https://mixed.example/")
 
 
 @pytest.fixture

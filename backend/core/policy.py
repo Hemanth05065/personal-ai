@@ -46,7 +46,10 @@ def evaluate_action(
         )
     if action in PROHIBITED_ACTIONS or risk >= RiskLevel.PROHIBITED:
         return PolicyDecision(False, False, "This action is denied by the local safety policy.")
-    role_limit = ROLE_MAX_RISK.get(role, RiskLevel.INFORMATION)
+    role_limit = ROLE_MAX_RISK.get(role)
+    if role_limit is None:
+        # The same as the Rego policy: a role it doesn't know gets nothing, not risk 0.
+        return PolicyDecision(False, False, f"Role {role!r} is not a known role.")
     if risk > role_limit:
         return PolicyDecision(
             False, False, f"Role {role!r} is not authorized for risk level {int(risk)}."

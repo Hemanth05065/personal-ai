@@ -28,6 +28,38 @@ jobs:
         # Includes the evaluation harness's checks and its reference solutions.
         run: pytest -q
 
+  policy:
+    name: Policy (OPA)
+    # The Rego policy can't run on the development machine (Windows App Control blocks
+    # opa.exe), so it is checked here: its own unit tests, then a real OPA server asked
+    # about every role, risk and action, compared with the local Python policy.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: open-policy-agent/setup-opa@v2
+        with:
+          version: 1.11.0  # the same version as docker-compose.yml
+      - name: Check
+        run: opa check security/opa
+      - name: Rego unit tests
+        run: opa test security/opa -v
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Start OPA
+        run: |
+          opa run --server --addr 127.0.0.1:8181 security/opa/assistant.rego &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8181/health && exit 0; sleep 1; done
+          exit 1
+      - name: Rego and Python policies agree
+        env:
+          OPA_PARITY_URL: http://127.0.0.1:8181
+        run: pytest -q tests/test_opa_parity.py
+
   web:
     name: Web (build)
     runs-on: ubuntu-latest
