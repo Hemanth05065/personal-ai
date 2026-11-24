@@ -113,6 +113,30 @@ obeys every planted instruction it can see:
 
 So the live numbers measure the models, and the tests prove the server.
 
+## Web answer accuracy
+
+```bash
+python eval/web_accuracy.py --models qwen3.5:4b,qwen3:8b,llama3.1:8b   # both modes
+python eval/web_accuracy.py --modes memory                              # offline only
+python eval/web_accuracy.py --summarize eval/results/<file>.json
+```
+
+27 everyday questions through the real chat endpoint, each asked in two modes:
+- `search`: search first on. **Uses the internet:** only the question goes to DuckDuckGo
+  and the opened page, with a generic User-Agent.
+- `memory`: no web at all; the model answers from training.
+
+The questions come in three kinds:
+- 20 **recent**: 2024–2025 facts, settled now;
+- 4 **stable**: old facts;
+- 3 **unanswerable**: a future final, or a made-up town.
+
+Replies are scored as right, wrong or declined, or as invented for an unanswerable
+question. Scoring is by keywords, with links removed first. Read the "wrong" and "invented"
+replies the summary lists before quoting a number. `tests/test_web_accuracy.py` checks the
+scorer, that every question really triggers search first, and that memory mode sends
+nothing out.
+
 ## Safety
 
 The models' code runs in `runner.mjs`, a fresh Node process per run:

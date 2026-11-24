@@ -193,6 +193,62 @@ Full tables, per path and per style:
 `...-ablation-<layer>.json`. The first, smaller run of this harness (12 cases, before the
 correction existed) is kept as `2026-11-18-agent-before-fix.json`.
 
+## Web answer accuracy (added 24 November 2026)
+
+Measured with `eval/web_accuracy.py`: 27 questions through the real chat endpoint, one run
+each, in two modes:
+- **search:** search first on, the app's default. This mode used the internet.
+- **memory:** no web at all.
+
+The questions:
+- **Recent (20):** 2024–2025 facts, settled now: the new Pope, the 2025 Ballon d'Or, IPL 2025,
+  Germany's and Canada's new leaders, the 2025 Nobel prizes, and so on.
+- **Stable (4):** old facts.
+- **Unanswerable (3):** the 2030 World Cup and 2027 Cricket World Cup winners, and the mayor of
+  a made-up town.
+
+Every reply was read by hand, and the table shows the hand-checked numbers.
+
+| Model | Mode | Recent: right | Recent: wrong | Recent: declined | Stable: right | Unanswerable: invented |
+|---|---|---|---|---|---|---|
+| `qwen3.5:4b` | search | **20/20** | 0 | 0 | 4/4 | 0/3 |
+| `qwen3.5:4b` | memory | 4/20 | 8 | 8 | 4/4 | 0/3 |
+| `qwen3:8b` | search | **19/20** | 0 | 1 | 4/4 | 0/3 |
+| `qwen3:8b` | memory | 0/20 | 5 | 15 | 4/4 | 0/3 |
+| `llama3.1:8b` | search | **20/20** | 0 | 0 | 4/4 | 0/3 |
+| `llama3.1:8b` | memory | 0/20 | 1 | 19 | 3/4 | 0/3 |
+
+- **Search fixes recent facts:** 59/60 right, against 4/60 from memory, with no wrong answers.
+  The one miss was a search that returned no results. `qwen3:8b` said so instead of guessing.
+- **From memory, the small model guesses; the 8B models mostly decline.**
+  - `qwen3.5:4b` gave 8 confident wrong answers, such as:
+    - Victor Osimhen for the Ballon d'Or;
+    - "Georgia" for Eurovision;
+    - a 38–4 Super Bowl.
+  - Of its 4 right names, 3 came with invented details: the wrong final opponent, the wrong
+    party, a made-up predecessor.
+  - Two more of its replies contained the right name but said the event never happened. The
+    keyword scorer counted those as right, and the hand check corrected them.
+  - The 8B models declined 15 and 19 times. Their 5 and 1 wrong answers kept the old office
+    holder, such as Scholz or Trudeau.
+- **Nothing was invented** for the unanswerable questions, in either mode.
+- **Search doesn't hurt easy facts:** all 4 stable questions were right in search mode for every
+  model. In memory mode, `llama3.1:8b` declined the Moon landing year.
+- **Time:** 162 answers took 15 minutes. A searched answer takes about 15 s on `qwen3.5:4b`, and
+  one from memory about 2 s.
+
+**Scoring and its limits:**
+- The keyword scorer first marked 10 refusals as wrong or invented, because they used phrasings
+  like "not available in my knowledge" or "the results do not provide". The pattern now knows
+  them, and `--summarize` re-scores the saved replies. It also marked 2 replies as right that
+  hand-checking calls wrong.
+- One run per question, and 20 recent questions per model: one answer moves a rate by 5 points.
+- The questions are well-covered events with a Wikipedia page. Niche or very new topics will do
+  worse.
+
+Raw replies: `eval/results/2026-11-24-web-accuracy.json`. Table:
+`python eval/web_accuracy.py --summarize eval/results/2026-11-24-web-accuracy.json`.
+
 ## Earlier single-run numbers: superseded
 
 An earlier, hand-run benchmark reported single runs, such as "1/6 → 6/6" on the

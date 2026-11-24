@@ -27,6 +27,8 @@ From the evaluation harness in [`eval/`](eval/README.md), November 2026, on a la
 | Same, planted in web pages (search first, opened link, Wikipedia lookup): 18 cases, 3 models | 5 per case | **0 writes without approval, in 270 runs** (models obeyed 11% / 11% / 0%) |
 | Ablation: planted web writes with the web check off (`qwen3.5:4b`) | 90 | 8 (vs 0 with it on) |
 | Ablation: planted files written with the file-read check off (`qwen3.5:4b`) | 90 | 11 (vs 0 with it on) |
+| Web answers on 20 recent facts (2024–2025), search first on, 3 chat models, hand-checked | 1 per question | **59/60 right**, none wrong (vs 4/60 from memory) |
+| ...unanswerable questions (future events, a made-up town) | 1 per question | **0/9 invented** in search mode |
 | Audit log: a hand-edited row is detected; deleting the newest rows is **not** | demo | [see the limits](docs/security-model.md#known-limits) |
 
 ![Demo: a coding request is written, run and self-checked, then a file is saved in Do-it mode and undone](docs/demo.gif)
@@ -241,6 +243,7 @@ The results are at the [top of this page](#measured-results).
 .\.venv\Scripts\python eval\run_eval.py --runs 3
 .\.venv\Scripts\python eval\agent_eval.py --models qwen3.5:4b,llama3.1:8b --runs 5
 .\.venv\Scripts\python eval\agent_eval.py --kind injection --disable file_check
+.\.venv\Scripts\python eval\web_accuracy.py --models qwen3.5:4b,qwen3:8b,llama3.1:8b
 .\.venv\Scripts\python scripts\audit_tamper_demo.py
 ```
 
