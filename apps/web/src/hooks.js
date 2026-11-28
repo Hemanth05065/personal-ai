@@ -112,7 +112,10 @@ export function useChat(notify, enabled) {
           setConversationId(event.conversation_id);
           setMessages((items) => [...items, { role: "assistant", content: "", tools: [], streaming: true, coding: event.coding === true, big: event.big === true, searched: event.search_first === true }]);
         } else if (event.type === "delta") {
-          updateReply((reply) => ({ ...reply, content: reply.content + event.text }));
+          // Text is arriving: the "Reading…" line has done its job.
+          updateReply((reply) => ({ ...reply, content: reply.content + event.text, status: "" }));
+        } else if (event.type === "status") {
+          updateReply((reply) => ({ ...reply, status: event.text }));
         } else if (event.type === "tool") {
           updateReply((reply) => ({ ...reply, tools: [...reply.tools, event.tool] }));
         } else if (event.type === "done") {

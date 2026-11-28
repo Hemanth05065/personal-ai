@@ -144,3 +144,41 @@ def test_switching_web_search_is_recorded_in_the_audit_log(client, search_first)
 def test_with_web_access_off_the_button_is_hidden_and_nothing_is_searched(client, monkeypatch, search_first):
     monkeypatch.setattr(get_settings(), "web_lookups_enabled", False)
     assert client.get("/api/v1/settings/me").json() == {"autopilot": False, "web_search": False, "web_available": False}
+
+
+def _statuses(events):
+    return [event["text"] for event in events if event["type"] == "status"]
+
+
+def test_the_chat_is_told_each_step_while_it_waits(client, monkeypatch, search_first):
+    """No silent wait: searching, reading the site, then writing, in the order they happen."""
+    ScriptedModel(["22K gold is 7,050 per gram."]).install(monkeypatch)
+    events = _stream(client, "gold rate in chennai today")
+    assert _statuses(events) == [
+        "Searching the web for “gold rate in chennai today”…",
+        "Reading goodreturns.in…",
+        "Writing the answer…",
+    ]
+    kinds = [event["type"] for event in events]
+    assert kinds.index("status") < kinds.index("tool")  # said before the step, not after
+
+
+def test_progress_is_never_saved_in_the_conversation(client, monkeypatch, search_first):
+    ScriptedModel(["22K gold is 7,050 per gram."]).install(monkeypatch)
+    events = _stream(client, "gold rate in chennai today")
+    conversation_id = next(e for e in events if e["type"] == "start")["conversation_id"]
+    saved = client.get(f"/api/v1/chat/conversations/{conversation_id}").json()["messages"]
+    assert not any("Searching the web" in m["content"] or "Writing the answer" in m["content"] for m in saved)
+    assert [m["role"] for m in saved] == ["user", "tool_event", "tool_event", "assistant"]
+
+
+def test_model_requested_tools_get_progress_too(client, monkeypatch):
+    (_workspace() / "notes.txt").write_text("Dentist on Tuesday.")
+    ScriptedModel([ToolRequest("read_file", {"path": "notes.txt"})], ["Tuesday."]).install(monkeypatch)
+    events = _stream(client, "When is the dentist? It's in notes.txt")
+    assert _statuses(events) == ["Reading notes.txt…", "Writing the answer…"]
+
+
+def test_a_plain_reply_has_no_progress_lines(client, monkeypatch):
+    ScriptedModel(["Hello!"]).install(monkeypatch)
+    assert _statuses(_stream(client, "hi")) == []

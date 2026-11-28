@@ -19,6 +19,7 @@ import re
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from backend.core.config import get_settings
 from backend.database import SessionLocal
@@ -276,6 +277,36 @@ def _describe(name: str, arguments: dict) -> str:
     return f"Write {size} bytes to {path}"
 
 
+def _host(url: str) -> str:
+    host = urlsplit(url).hostname or url
+    return host.removeprefix("www.")[:80]
+
+
+def progress_text(request: ToolRequest) -> str:
+    """What the chat shows while a tool runs, so a search is never a silent wait."""
+    arguments = request.arguments if isinstance(request.arguments, dict) else {}
+    text = str(arguments.get("query") or arguments.get("place") or arguments.get("path") or "")[:80]
+    if request.name == "web_search":
+        return f"Searching the web for “{text}”…"
+    if request.name == "open_page":
+        return f"Reading {_host(str(arguments.get('url', '')))}…"
+    if request.name == "web_lookup":
+        return f"Looking up “{text}”…"
+    if request.name == "weather":
+        return f"Checking the weather for {text}…"
+    if request.name == "read_file":
+        return f"Reading {text}…"
+    if request.name == "search_files":
+        return "Searching your files…"
+    if request.name == "list_files":
+        return "Listing your files…"
+    return "Preparing the change…"
+
+
+def _status(text: str) -> dict:
+    return {"type": "status", "text": text}
+
+
 def _run_now(db, principal: Principal, planned: PlannedTask, card: dict) -> ToolOutcome:
     """Do-it mode: approve through the normal approval path and run immediately."""
     try:
@@ -481,7 +512,10 @@ async def run_agent(
     tainted_by: str | None = None,
     search_first: str | None = None,
 ) -> AsyncIterator[dict]:
-    """Yield {"type": "delta", "text"} and {"type": "tool", "tool": card} events.
+    """Yield {"type": "delta", "text"}, {"type": "tool", "tool": card} and {"type": "status", "text"}.
+
+    A status event says what is happening now ("Reading python.org…"). It is shown while the
+    reply waits and is never saved: the tool cards and the reply are the record.
 
     autopilot (Do-it mode) runs the user's requested writes without an approval
     click, unless the model's context holds text the user didn't write: files read in this
@@ -511,6 +545,7 @@ async def run_agent(
         steps = [ToolRequest("web_search", {"query": search_first[:MAX_SEARCH_CHARS]})]
         while steps:
             request = steps.pop(0)
+            yield _status(progress_text(request))
             outcome = await asyncio.to_thread(handle_tool_request, principal, request, autopilot, tainted)
             yield {"type": "tool", "tool": outcome.card}
             if outcome.card["status"] in ("awaiting_approval", "flagged", "denied"):
@@ -537,8 +572,11 @@ async def run_agent(
             conversation[-1]["content"] += SEARCH_REMINDER.format(clock=clock_text())
         guidance += "\n\n" + SEARCHED_GUIDANCE
 
-    for _ in range(MAX_ROUNDS):
+    for round_number in range(MAX_ROUNDS):
         current = _Round()
+        if sources or round_number:
+            # The model is reading what the tools found: the slowest wait, so say so.
+            yield _status("Writing the answer…")
         async for item in ollama.stream_chat(conversation, memories, tools=tools, system_extra=guidance):
             if isinstance(item, ToolRequest):
                 current.requests.append(item)
@@ -557,6 +595,7 @@ async def run_agent(
 
         handled: list[tuple[ToolRequest, ToolOutcome]] = []
         for request in current.requests[:MAX_CALLS_PER_ROUND]:
+            yield _status(progress_text(request))
             # Tools do file IO and (for search) embedding calls; keep them off the event loop.
             outcome = await asyncio.to_thread(handle_tool_request, principal, request, autopilot, tainted)
             if request.name in CONTENT_READS and outcome.card["status"] == "completed":

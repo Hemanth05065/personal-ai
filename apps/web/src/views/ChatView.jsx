@@ -4,6 +4,7 @@ import Markdown from "../components/Markdown.jsx";
 import ToolCard from "../components/ToolCard.jsx";
 import PreviewPane from "../components/PreviewPane.jsx";
 import { bestRunnable, exampleInput, fixRequest, isPython } from "../preview.js";
+import { splitSources } from "../sources.js";
 
 const WHO = { user: "You", assistant: "Assistant", error: "Problem" };
 const MAX_FIXES = 3;
@@ -14,6 +15,19 @@ function parseTool(content) {
 
 function Thinking() {
   return <div className="skeleton" role="status" aria-label="The assistant is thinking"><span /><span /></div>;
+}
+
+/** What the server is doing right now: "Searching the web for …", "Reading python.org…". */
+function Progress({ text }) {
+  return <p className="progress" role="status"><span className="progress-dot" aria-hidden="true" />{text}</p>;
+}
+
+function Sources({ sources }) {
+  return <nav className="source-chips" aria-label="Sources">
+    <span className="muted">Sources</span>
+    {sources.map((source) => <a key={source.url} className="source-chip" href={source.url} target="_blank"
+      rel="noreferrer noopener" title={source.title}>{source.host}</a>)}
+  </nav>;
 }
 
 export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
@@ -173,16 +187,19 @@ export default function ChatView({ chat, notify, modelReady, refreshSafety }) {
             </article>;
           }
           const tools = message.tools || [];
+          const { body, sources } = message.role === "assistant" ? splitSources(message.content || "") : { body: message.content, sources: [] };
           return <article className={`msg msg-${message.role}`} key={key}>
             <p className="msg-who">{WHO[message.role] || message.role}{message.coding && <span className="msg-tag">{message.big ? "Big coding model (slower, more careful)" : "Coding model"}</span>}{message.searched && <span className="msg-tag">Searched the web</span>}</p>
             {tools.map(card)}
             {message.role === "assistant"
               ? (message.streaming && !message.content
-                ? (tools.length ? null : <Thinking />)
-                : message.content && <Markdown text={message.content} onRun={message.streaming ? undefined : openPreview} />)
+                ? (message.status || tools.length ? null : <Thinking />)
+                : body && <Markdown text={body} onRun={message.streaming ? undefined : openPreview} />)
               : <p className="msg-text">{message.content}</p>}
+            {message.streaming && message.status && <Progress text={message.status} />}
+            {sources.length > 0 && <Sources sources={sources} />}
             {message.stopped && <p className="muted">Stopped. The text above was kept.</p>}
-            {message.role === "assistant" && !message.streaming && message.content && <button type="button" className="btn btn-quiet btn-sm" onClick={() => speak(message.content)}>Read aloud</button>}
+            {message.role === "assistant" && !message.streaming && body && <button type="button" className="btn btn-quiet btn-sm" onClick={() => speak(body)}>Read aloud</button>}
           </article>;
         })}
         {busy && !waitingOnReply && <article className="msg msg-assistant">

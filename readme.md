@@ -88,8 +88,10 @@ are not tested.
   - get the weather (Open-Meteo).
 
   Everyday (non-coding) questions are searched first: the server searches DuckDuckGo with
-  your question, reads the top result, and the model answers only from it, with the
-  source linked, and the answer is labelled "Searched the web". Greetings, the date, sums,
+  your question, reads the top result, and the model answers only from it. While it works,
+  the chat says what it's doing ("Searching the web for …", "Reading python.org…", "Writing
+  the answer…"). The pages it used show as clickable chips under the answer, which is
+  labelled "Searched the web". Greetings, the date, sums,
   your own files and code skip this. Switch it with the **Web search** button beside the
   message box (`ASSISTANT_WEB_SEARCH_FIRST` sets the default). It's free and needs no account.
   Only the query or link leaves your computer.

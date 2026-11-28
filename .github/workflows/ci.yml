@@ -78,6 +78,8 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Unit tests
+        run: node --test src/sources.test.mjs
       - name: Evaluation runner (Pyodide sandbox)
         # The harness's code runner: same self-test rules as the Output panel, and Node's
         # permission model blocks processes and reads outside the repository.

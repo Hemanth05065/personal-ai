@@ -274,6 +274,13 @@ td { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .msg { display: grid; gap: var(--s1); justify-items: start; }
 .msg-who { font-size: var(--t-sm); font-weight: 600; color: var(--muted); }
 .msg-tag { margin-left: var(--s2); padding: 0 var(--s2); border: 1px solid var(--border-strong); border-radius: var(--r-box); font-weight: 500; }
+/* What the server is doing while the reply waits: "Reading python.org…". */
+.progress { display: flex; align-items: center; gap: var(--s2); margin: var(--s2) 0; color: var(--muted); font-size: var(--t-sm); overflow-wrap: anywhere; }
+.progress-dot { flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+/* Pages a searched answer came from. */
+.source-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); }
+.source-chip { max-width: 100%; padding: 2px var(--s3); border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: var(--t-sm); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-chip:hover { background: var(--surface-2); text-decoration: underline; }
 .msg-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .msg-user { justify-items: end; }
 .msg-user .msg-text { padding: var(--s3) var(--s4); border-radius: var(--r-box); background: var(--accent-soft); }

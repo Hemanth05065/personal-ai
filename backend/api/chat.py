@@ -190,6 +190,8 @@ async def chat_stream(
     {"type": "start", "conversation_id", "model", "coding", "big"}  once, first
     {"type": "delta", "text"}                       for each piece of the reply
     {"type": "tool", "tool": {...}}                 when the model asked for a tool (see agent.py)
+    {"type": "status", "text"}                      what is happening now, e.g. "Reading python.org…"
+                                                    (shown while waiting, never saved)
     {"type": "done", "message_id"}                  when the reply is complete
     {"type": "error", "detail"}                     if the model fails mid-way
 
@@ -249,7 +251,7 @@ async def chat_stream(
             ):
                 if event["type"] == "delta":
                     parts.append(event["text"])
-                else:
+                elif event["type"] == "tool":
                     await run_in_threadpool(
                         _save_message, conversation_id, "tool_event", json.dumps(event["tool"])
                     )
